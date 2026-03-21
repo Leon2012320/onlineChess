@@ -8,7 +8,7 @@ const config = {
     height: GAME_HEIGHT,
     parent: 'phaser-game',
     backgroundColor: '#16213e',
-    scene: [BootScene, GameScene, ExerciseScene, TrainingScene],
+    scene: [BootScene, GameScene, FriendScene, ExerciseScene, TrainingScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -32,18 +32,24 @@ function switchMode(mode) {
     currentMode = mode;
 
     document.getElementById('btn-mode-play').classList.toggle('active', mode === 'play');
+    document.getElementById('btn-mode-friend').classList.toggle('active', mode === 'friend');
     document.getElementById('btn-mode-train').classList.toggle('active', mode === 'train');
     document.getElementById('controls').style.display = mode === 'play' ? 'flex' : 'none';
+    document.getElementById('friend-controls').style.display = mode === 'friend' ? 'flex' : 'none';
     document.getElementById('training-controls').style.display = mode === 'train' ? 'flex' : 'none';
 
+    stopActiveScene();
     if (mode === 'play') {
-        stopActiveScene();
         setTimeout(() => {
             activeScene = 'GameScene';
             game.scene.start('GameScene');
         }, 50);
+    } else if (mode === 'friend') {
+        setTimeout(() => {
+            activeScene = 'FriendScene';
+            game.scene.start('FriendScene');
+        }, 50);
     } else {
-        stopActiveScene();
         setTimeout(() => startTrainingFromDropdown(), 50);
     }
 }
@@ -73,6 +79,7 @@ function startTrainingFromDropdown() {
 document.addEventListener('DOMContentLoaded', () => {
     // Mode-Switch Buttons
     document.getElementById('btn-mode-play').addEventListener('click', () => switchMode('play'));
+    document.getElementById('btn-mode-friend').addEventListener('click', () => switchMode('friend'));
     document.getElementById('btn-mode-train').addEventListener('click', () => switchMode('train'));
 
     const catSelect = document.getElementById('puzzle-category');

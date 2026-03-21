@@ -438,6 +438,7 @@
         <h1>&#9816; Schach</h1>
         <div id="mode-switch">
             <button id="btn-mode-play" class="active">&#9876; Spielen</button>
+            <button id="btn-mode-friend">&#9822; Gegen Freund</button>
             <button id="btn-mode-train">&#128218; Training</button>
         </div>
         <div id="controls">
@@ -451,6 +452,9 @@
                 <option value="3">Stark</option>
             </select>
             <button id="btn-new-game" class="ctrl-btn btn-accent">Neues Spiel</button>
+        </div>
+        <div id="friend-controls" style="display:none;">
+            <button id="btn-new-friend-game" class="ctrl-btn btn-accent">Neues Spiel</button>
         </div>
         <div id="training-controls">
             <div class="row">
@@ -493,6 +497,7 @@
     <script src="js/puzzleDatabase.js"></script>
     <script src="js/scenes/BootScene.js"></script>
     <script src="js/scenes/GameScene.js"></script>
+    <script src="js/scenes/FriendScene.js"></script>
     <script src="js/scenes/ExerciseScene.js"></script>
     <script src="js/scenes/TrainingScene.js"></script>
     <script src="js/main.js"></script>
