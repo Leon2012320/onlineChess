@@ -228,4 +228,42 @@ class ChessEngine {
 
         return bestMove;
     }
+
+    // Zug finden der Remis anstrebt (Bewertung möglichst nahe 0)
+    findDrawMove(color) {
+        const isMaximizing = color === COLOR.WHITE;
+        let moves = this.getAllMoves(color);
+        moves = this.orderMoves(moves);
+
+        if (moves.length === 0) return null;
+
+        let bestMove = null;
+        let bestAbsEval = Infinity;
+
+        for (const move of moves) {
+            const state = this.chess.getState();
+            this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+
+            // Patt ist ein Remis — bevorzugen
+            const opponentColor = color === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
+            if (this.chess.isStalemate(opponentColor)) {
+                this.chess.loadState(state);
+                this.chess.currentTurn = color;
+                return move;
+            }
+
+            const evalScore = this.minimax(this.maxDepth - 1, -Infinity, Infinity, !isMaximizing);
+            this.chess.loadState(state);
+            this.chess.currentTurn = color;
+
+            // Zug wählen dessen Bewertung am nächsten an 0 liegt
+            const absEval = Math.abs(evalScore);
+            if (absEval < bestAbsEval) {
+                bestAbsEval = absEval;
+                bestMove = move;
+            }
+        }
+
+        return bestMove;
+    }
 }

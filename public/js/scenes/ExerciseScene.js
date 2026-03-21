@@ -1,5 +1,5 @@
 // ============================================
-// Exercise Scene - Übungen (freies Spiel vs Zufallszüge)
+// Exercise Scene - Übungen (freies Spiel vs Remis-KI)
 // ============================================
 
 class ExerciseScene extends Phaser.Scene {
@@ -14,6 +14,8 @@ class ExerciseScene extends Phaser.Scene {
 
     create() {
         this.chess = new ChessLogic();
+        this.engine = new ChessEngine(this.chess);
+        this.engine.setDifficulty(2);
         this.selectedTile = null;
         this.legalMoveIndicators = [];
         this.pieceSprites = [];
@@ -183,8 +185,8 @@ class ExerciseScene extends Phaser.Scene {
                     return;
                 }
 
-                // Gegner spielt zufällig
-                this.time.delayedCall(400, () => this._opponentRandomMove());
+                // Gegner spielt mit Remis-KI
+                this.time.delayedCall(400, () => this._opponentDrawMove());
             } else {
                 // Ungültiger Zug, neue Figur auswählen?
                 const piece = this.chess.getPiece(row, col);
@@ -204,33 +206,18 @@ class ExerciseScene extends Phaser.Scene {
         }
     }
 
-    // ---- Gegner: Zufälliger Zug ----
-    _opponentRandomMove() {
+    // ---- Gegner: Remis-KI ----
+    _opponentDrawMove() {
         if (this.exerciseDone || this.chess.gameOver) return;
 
-        // Alle legalen Züge des Gegners sammeln
-        const allMoves = [];
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const p = this.chess.getPiece(r, c);
-                if (p && p.color === this.opponentColor) {
-                    const moves = this.chess.getLegalMoves(r, c);
-                    for (const m of moves) {
-                        allMoves.push({ from: { row: r, col: c }, to: m });
-                    }
-                }
-            }
-        }
+        const move = this.engine.findDrawMove(this.opponentColor);
+        if (!move) return;
 
-        if (allMoves.length === 0) return; // Matt oder Patt
-
-        // Zufälligen Zug wählen
-        const pick = allMoves[Math.floor(Math.random() * allMoves.length)];
-        const result = this.chess.makeMove(pick.from.row, pick.from.col, pick.to.row, pick.to.col);
+        const result = this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
         if (result) {
             this.clearHighlights();
-            this._setTileOverlay(pick.from.row, pick.from.col, COLORS.LAST_MOVE, 0.35);
-            this._setTileOverlay(pick.to.row, pick.to.col, COLORS.LAST_MOVE, 0.35);
+            this._setTileOverlay(move.fromRow, move.fromCol, COLORS.LAST_MOVE, 0.35);
+            this._setTileOverlay(move.toRow, move.toCol, COLORS.LAST_MOVE, 0.35);
             this.drawPieces();
             this._updateUI();
         }
