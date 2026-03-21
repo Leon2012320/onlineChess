@@ -5,13 +5,19 @@
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
+        this._uiBound = false;
     }
 
     create() {
         this.chess = new ChessLogic();
         this.engine = new ChessEngine(this.chess);
-        this.playerColor = COLOR.WHITE;
-        this.engineColor = COLOR.BLACK;
+
+        // Gespeicherte Spielfarbe übernehmen
+        const playAsEl = document.getElementById('play-as');
+        this.playerColor = playAsEl ? playAsEl.value : COLOR.WHITE;
+        this.engineColor = this.playerColor === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
+        this.flipped = this.playerColor === COLOR.BLACK;
+
         this.selectedTile = null;
         this.legalMoveIndicators = [];
         this.pieceSprites = [];
@@ -24,38 +30,27 @@ class GameScene extends Phaser.Scene {
         this.setupInput();
         this.setupUI();
         this.updateStatus();
+
+        // Wenn Schwarz, Engine macht den ersten Zug
+        if (this.playerColor === COLOR.BLACK) {
+            this.engineMove();
+        }
     }
+
+    // --- Koordinaten-Konvertierung (wenn Brett gedreht) ---
+    _viewRow(boardRow) { return this.flipped ? 7 - boardRow : boardRow; }
+    _viewCol(boardCol) { return this.flipped ? 7 - boardCol : boardCol; }
+    _boardRow(viewRow) { return this.flipped ? 7 - viewRow : viewRow; }
+    _boardCol(viewCol) { return this.flipped ? 7 - viewCol : viewCol; }
 
     // ---- Brett zeichnen ----
     drawBoard() {
         // Holzrahmen
-        this.add
-            .rectangle(
-                BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_SIZE * TILE_SIZE + 20,
-                BOARD_SIZE * TILE_SIZE + 20,
-                0x5c3317
-            )
-            .setOrigin(0.5);
-        this.add
-            .rectangle(
-                BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_SIZE * TILE_SIZE + 12,
-                BOARD_SIZE * TILE_SIZE + 12,
-                0x7a4b2a
-            )
-            .setOrigin(0.5);
-        this.add
-            .rectangle(
-                BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_SIZE * TILE_SIZE + 4,
-                BOARD_SIZE * TILE_SIZE + 4,
-                0x3e1f0d
-            )
-            .setOrigin(0.5);
+        const cx = BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2;
+        const cy = BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2;
+        this.add.rectangle(cx, cy, BOARD_SIZE * TILE_SIZE + 20, BOARD_SIZE * TILE_SIZE + 20, 0x5c3317).setOrigin(0.5);
+        this.add.rectangle(cx, cy, BOARD_SIZE * TILE_SIZE + 12, BOARD_SIZE * TILE_SIZE + 12, 0x7a4b2a).setOrigin(0.5);
+        this.add.rectangle(cx, cy, BOARD_SIZE * TILE_SIZE + 4, BOARD_SIZE * TILE_SIZE + 4, 0x3e1f0d).setOrigin(0.5);
 
         // Felder mit Holztextur
         this._createWoodTileTextures();
@@ -69,7 +64,6 @@ class GameScene extends Phaser.Scene {
 
                 const texKey = isLight ? '_woodLight' : '_woodDark';
                 const tile = this.add.image(x + TILE_SIZE / 2, y + TILE_SIZE / 2, texKey);
-                // Farbton-Overlay für Highlights speichern
                 const overlay = this.add.rectangle(
                     x + TILE_SIZE / 2, y + TILE_SIZE / 2,
                     TILE_SIZE, TILE_SIZE, 0x000000, 0
@@ -80,19 +74,23 @@ class GameScene extends Phaser.Scene {
             }
         }
 
+        // Beschriftung (a-h, 1-8) passend zur Ausrichtung
         const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
         for (let i = 0; i < 8; i++) {
+            const fileIdx = this.flipped ? 7 - i : i;
+            const rankNum = this.flipped ? i + 1 : 8 - i;
+
             this.add.text(
                 BOARD_OFFSET_X + i * TILE_SIZE + TILE_SIZE / 2,
                 BOARD_OFFSET_Y + BOARD_SIZE * TILE_SIZE + 8,
-                files[i],
+                files[fileIdx],
                 { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }
             ).setOrigin(0.5, 0);
 
             this.add.text(
                 BOARD_OFFSET_X - 20,
                 BOARD_OFFSET_Y + i * TILE_SIZE + TILE_SIZE / 2,
-                String(8 - i),
+                String(rankNum),
                 { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }
             ).setOrigin(0.5);
         }
@@ -149,8 +147,10 @@ class GameScene extends Phaser.Scene {
             for (let col = 0; col < BOARD_SIZE; col++) {
                 const piece = this.chess.getPiece(row, col);
                 if (piece) {
-                    const x = BOARD_OFFSET_X + col * TILE_SIZE + TILE_SIZE / 2;
-                    const y = BOARD_OFFSET_Y + row * TILE_SIZE + TILE_SIZE / 2;
+                    const vr = this._viewRow(row);
+                    const vc = this._viewCol(col);
+                    const x = BOARD_OFFSET_X + vc * TILE_SIZE + TILE_SIZE / 2;
+                    const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
                     const key = `${piece.color}_${piece.type}`;
                     const sprite = this.add.image(x, y, key);
                     this.pieceSprites.push(sprite);
@@ -159,8 +159,11 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    // ---- UI Buttons ----
+    // ---- UI Buttons (nur einmal binden) ----
     setupUI() {
+        if (this._uiBound) return;
+        this._uiBound = true;
+
         document.getElementById('btn-new-game').addEventListener('click', () => {
             this.newGame();
         });
@@ -173,33 +176,24 @@ class GameScene extends Phaser.Scene {
         document.getElementById('play-as').addEventListener('change', (e) => {
             this.playerColor = e.target.value;
             this.engineColor = this.playerColor === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
-            this.newGame();
+            this.flipped = this.playerColor === COLOR.BLACK;
+            this.scene.restart();
         });
     }
 
     newGame() {
-        this.chess.reset();
-        this.selectedTile = null;
-        this.lastMove = null;
-        this.engineThinking = false;
-        this.clearHighlights();
-        this.clearMoveIndicators();
-        this.drawPieces();
-        this.updateStatus();
-
-        if (this.playerColor === COLOR.BLACK) {
-            this.engineMove();
-        }
+        this.scene.restart();
     }
 
     // ---- Eingabe ----
     setupInput() {
         this.input.on('pointerdown', (pointer) => {
-            const col = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
-            const row = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
-
-            if (row < 0 || row > 7 || col < 0 || col > 7) return;
-            this.handleTileClick(row, col);
+            const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
+            const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
+            if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) return;
+            const boardRow = this._boardRow(viewRow);
+            const boardCol = this._boardCol(viewCol);
+            this.handleTileClick(boardRow, boardCol);
         });
     }
 
@@ -275,8 +269,10 @@ class GameScene extends Phaser.Scene {
 
         const moves = this.chess.getLegalMoves(row, col);
         for (const move of moves) {
-            const x = BOARD_OFFSET_X + move.col * TILE_SIZE + TILE_SIZE / 2;
-            const y = BOARD_OFFSET_Y + move.row * TILE_SIZE + TILE_SIZE / 2;
+            const vr = this._viewRow(move.row);
+            const vc = this._viewCol(move.col);
+            const x = BOARD_OFFSET_X + vc * TILE_SIZE + TILE_SIZE / 2;
+            const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
 
             const target = this.chess.getPiece(move.row, move.col);
             let indicator;
@@ -300,8 +296,10 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    _setTileOverlay(row, col, color, alpha) {
-        const tile = this.tileGraphics[row][col];
+    _setTileOverlay(boardRow, boardCol, color, alpha) {
+        const vr = this._viewRow(boardRow);
+        const vc = this._viewCol(boardCol);
+        const tile = this.tileGraphics[vr][vc];
         if (tile._overlay) {
             tile._overlay.setFillStyle(color, alpha);
         }
