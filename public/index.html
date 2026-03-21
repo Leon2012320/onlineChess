@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
@@ -16,8 +16,9 @@
             background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 40%, #24243e 100%);
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
+            padding: 20px 0;
             font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
             color: #e0e0e0;
         }
@@ -228,9 +229,11 @@
         #phaser-game {
             touch-action: none;
             max-width: 100%;
+            width: min(720px, 90vw);
         }
         #phaser-game canvas {
             max-width: 100%;
+            display: block;
         }
 
         /* iPad Landscape (begrenzte Höhe) */
@@ -261,17 +264,21 @@
 
         /* iPad Portrait / schmaler Tablet */
         @media (max-width: 820px) {
+            body { padding: 12px 0; }
             #game-container {
-                padding: 16px 12px 12px;
-                gap: 10px;
+                padding: 14px 10px 10px;
+                gap: 8px;
                 border-radius: 14px;
                 width: 95vw;
                 max-width: 740px;
             }
-            h1 { font-size: 1.45rem; }
-            #status { min-width: auto; width: 100%; }
+            h1 { font-size: 1.3rem; }
+            #status { min-width: auto; width: 100%; font-size: 0.85rem; }
             #controls, #training-controls .row, #settings-row {
                 width: 100%;
+            }
+            #phaser-game, #phaser-game canvas {
+                max-width: 100%;
             }
         }
 
