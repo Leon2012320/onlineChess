@@ -278,11 +278,13 @@
                 width: 100%;
             }
             #phaser-game {
-                width: 100%;
-                max-width: 540px;
+                width: 100% !important;
+                max-width: 540px !important;
             }
             #phaser-game canvas {
-                max-width: 100%;
+                width: 100% !important;
+                height: auto !important;
+                max-width: 540px !important;
             }
         }
         /* Schmales Tablet Portrait */
@@ -292,7 +294,10 @@
                 max-width: 560px;
             }
             #phaser-game {
-                max-width: 500px;
+                max-width: 500px !important;
+            }
+            #phaser-game canvas {
+                max-width: 500px !important;
             }
         }
 
