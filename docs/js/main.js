@@ -63,6 +63,7 @@ function _showBoard(visible) {
 }
 
 function startFriendGame() {
+    console.log('startFriendGame called');
     document.getElementById('friend-setup').style.display = 'none';
     document.getElementById('friend-ingame').style.display = 'flex';
     _showBoard(true);
@@ -70,6 +71,7 @@ function startFriendGame() {
     setTimeout(() => {
         activeScene = 'FriendScene';
         game.scene.start('FriendScene');
+        console.log('FriendScene started');
     }, 50);
 }
 
@@ -102,20 +104,21 @@ function startTrainingFromDropdown() {
 }
 
 // ---- Kategorien-Dropdown & Event-Listener ----
+
+// Friend-Modus Buttons (direkt binden, da Script am Ende des Body)
+document.getElementById('btn-start-friend').addEventListener('click', () => startFriendGame());
+document.getElementById('btn-new-friend-game').addEventListener('click', () => friendBackToSetup());
+document.getElementById('btn-restart-friend').addEventListener('click', () => {
+    if (game.scene.isActive('FriendScene')) {
+        game.scene.getScene('FriendScene').scene.restart();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     // Mode-Switch Buttons
     document.getElementById('btn-mode-play').addEventListener('click', () => switchMode('play'));
     document.getElementById('btn-mode-friend').addEventListener('click', () => switchMode('friend'));
     document.getElementById('btn-mode-train').addEventListener('click', () => switchMode('train'));
-
-    // Friend-Modus Buttons
-    document.getElementById('btn-start-friend').addEventListener('click', () => startFriendGame());
-    document.getElementById('btn-new-friend-game').addEventListener('click', () => friendBackToSetup());
-    document.getElementById('btn-restart-friend').addEventListener('click', () => {
-        if (game.scene.isActive('FriendScene')) {
-            game.scene.getScene('FriendScene').scene.restart();
-        }
-    });
 
     const catSelect = document.getElementById('puzzle-category');
     if (catSelect) {
