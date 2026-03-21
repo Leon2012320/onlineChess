@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schach gegen Engine</title>
+    <title>Schach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,87 +13,148 @@
             box-sizing: border-box;
         }
         body {
-            background-color: #1a1a2e;
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 40%, #24243e 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
             color: #e0e0e0;
         }
         #game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
+            padding: 28px 24px 20px;
+            background: rgba(16, 16, 40, 0.55);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset;
         }
         h1 {
-            font-size: 1.6rem;
-            color: #e0e0e0;
-            letter-spacing: 1px;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 12px rgba(91,200,91,0.15);
         }
+
+        /* --- Mode Switch Tabs --- */
+        #mode-switch {
+            display: flex;
+            gap: 0;
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding: 3px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        #mode-switch button {
+            padding: 9px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            background: transparent;
+            color: #8a8aaf;
+            transition: all 0.25s ease;
+            letter-spacing: 0.3px;
+        }
+        #mode-switch button:hover {
+            color: #c0c0e0;
+        }
+        #mode-switch button.active {
+            background: linear-gradient(135deg, #3a7bd5 0%, #5b68d4 100%);
+            color: #fff;
+            box-shadow: 0 3px 12px rgba(58,123,213,0.35);
+        }
+
+        /* --- Controls (Spielen) --- */
         #controls {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             align-items: center;
             flex-wrap: wrap;
             justify-content: center;
         }
-        #controls select, #controls button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        #controls select {
-            background: #16213e;
-            color: #e0e0e0;
-            border: 1px solid #334;
-        }
-        #controls button {
-            background: #0f3460;
-            color: #e0e0e0;
-            transition: background 0.2s;
-        }
-        #controls button:hover {
-            background: #1a5276;
-        }
-        #status {
-            font-size: 1.1rem;
-            padding: 8px 16px;
-            background: #16213e;
+
+        /* --- Shared Selects & Buttons --- */
+        select, .ctrl-btn {
+            padding: 9px 16px;
+            border: 1px solid rgba(255,255,255,0.08);
             border-radius: 8px;
-            min-width: 300px;
-            text-align: center;
-        }
-        #mode-switch {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-        #mode-switch button {
-            padding: 8px 18px;
-            border: 2px solid #334;
-            border-radius: 6px;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
+            font-weight: 500;
             cursor: pointer;
             font-family: inherit;
-            background: #16213e;
-            color: #e0e0e0;
-            transition: background 0.2s, border-color 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: #d0d0e8;
+            transition: all 0.2s ease;
+            outline: none;
+            -webkit-appearance: none;
         }
-        #mode-switch button.active {
-            background: #0f3460;
-            border-color: #5bc85b;
+        select:hover, .ctrl-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.15);
+        }
+        select:focus {
+            border-color: rgba(58,123,213,0.5);
+            box-shadow: 0 0 0 3px rgba(58,123,213,0.15);
+        }
+        select option {
+            background: #1a1a3e;
+            color: #d0d0e8;
+        }
+        .ctrl-btn {
+            background: linear-gradient(135deg, rgba(58,123,213,0.2), rgba(91,104,212,0.2));
+            border-color: rgba(58,123,213,0.25);
+            color: #c0d0ff;
+        }
+        .ctrl-btn:hover {
+            background: linear-gradient(135deg, rgba(58,123,213,0.35), rgba(91,104,212,0.35));
+            border-color: rgba(58,123,213,0.4);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(58,123,213,0.2);
+        }
+        .ctrl-btn:active {
+            transform: translateY(0);
+        }
+        .btn-accent {
+            background: linear-gradient(135deg, #3a7bd5, #5b68d4);
+            border-color: transparent;
             color: #fff;
         }
+        .btn-accent:hover {
+            background: linear-gradient(135deg, #4a8be5, #6b78e4);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(58,123,213,0.35);
+        }
+
+        /* --- Status Bar --- */
+        #status {
+            font-size: 0.95rem;
+            font-weight: 500;
+            padding: 10px 24px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            min-width: 340px;
+            text-align: center;
+            letter-spacing: 0.2px;
+            color: #c8c8e8;
+        }
+
+        /* --- Training Controls --- */
         #training-controls {
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
         #training-controls .row {
             display: flex;
@@ -100,41 +163,39 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        #training-controls select, #training-controls button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        #training-controls select {
-            background: #16213e;
-            color: #e0e0e0;
-            border: 1px solid #334;
-        }
-        #training-controls button {
-            background: #0f3460;
-            color: #e0e0e0;
-            transition: background 0.2s;
-        }
-        #training-controls button:hover {
-            background: #1a5276;
-        }
         #puzzle-title {
-            font-size: 0.95rem;
-            color: #c4a265;
+            font-size: 0.92rem;
+            font-weight: 500;
+            color: #d4a853;
+            letter-spacing: 0.3px;
         }
         #puzzle-hint {
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             color: #7fc97f;
             min-height: 1.2em;
             cursor: pointer;
+            font-weight: 500;
         }
         #puzzle-progress {
-            font-size: 0.85rem;
-            color: #888;
+            font-size: 0.82rem;
+            color: #6a6a8f;
+            font-weight: 500;
         }
+
+        /* --- Phaser Canvas --- */
+        #phaser-game {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        #phaser-game canvas {
+            border-radius: 12px;
+        }
+
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -154,16 +215,16 @@
                 <option value="2" selected>Mittel</option>
                 <option value="3">Stark</option>
             </select>
-            <button id="btn-new-game">Neues Spiel</button>
+            <button id="btn-new-game" class="ctrl-btn btn-accent">Neues Spiel</button>
         </div>
         <div id="training-controls">
             <div class="row">
                 <select id="puzzle-category"></select>
-                <button id="btn-reset-puzzle">↻ Neustart</button>
-                <button id="btn-next-puzzle">Nächstes →</button>
+                <button id="btn-reset-puzzle" class="ctrl-btn">↻ Neustart</button>
+                <button id="btn-next-puzzle" class="ctrl-btn btn-accent">Nächstes →</button>
             </div>
             <div class="row">
-                <button id="btn-hint">💡 Hinweis</button>
+                <button id="btn-hint" class="ctrl-btn">💡 Hinweis</button>
                 <button id="btn-prev-puzzle" style="display:none;"></button>
             </div>
             <div id="puzzle-title"></div>
