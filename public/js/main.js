@@ -108,6 +108,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-mode-friend').addEventListener('click', () => switchMode('friend'));
     document.getElementById('btn-mode-train').addEventListener('click', () => switchMode('train'));
 
+    // Friend-Modus Buttons
+    document.getElementById('btn-start-friend').addEventListener('click', () => startFriendGame());
+    document.getElementById('btn-new-friend-game').addEventListener('click', () => friendBackToSetup());
+    document.getElementById('btn-restart-friend').addEventListener('click', () => {
+        if (game.scene.isActive('FriendScene')) {
+            game.scene.getScene('FriendScene').scene.restart();
+        }
+    });
+
     const catSelect = document.getElementById('puzzle-category');
     if (catSelect) {
         // Übungen

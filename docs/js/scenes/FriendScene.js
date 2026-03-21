@@ -387,23 +387,7 @@ class FriendScene extends Phaser.Scene {
 
     // ---- UI Buttons ----
     _bindUIOnce() {
-        if (FriendScene._uiBound) return;
-        FriendScene._uiBound = true;
-
-        const getScene = () => this.scene.manager.getScene('FriendScene');
-
-        document.getElementById('btn-start-friend').addEventListener('click', () => {
-            startFriendGame();
-        });
-
-        document.getElementById('btn-new-friend-game').addEventListener('click', () => {
-            friendBackToSetup();
-        });
-
-        document.getElementById('btn-restart-friend').addEventListener('click', () => {
-            const s = getScene();
-            if (s && s.scene.isActive()) s.scene.restart();
-        });
+        // Buttons are now bound in main.js DOMContentLoaded
     }
 
     // ---- Eingabe ----
