@@ -21,6 +21,36 @@
             padding: 20px 0;
             font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
             color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        /* Animated background orbs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.12;
+            z-index: -1;
+            pointer-events: none;
+            animation: floatOrb 12s ease-in-out infinite alternate;
+        }
+        body::before {
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, #3a7bd5, #5b68d4);
+            top: -80px; left: -100px;
+        }
+        body::after {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, #d45b93, #d4a853);
+            bottom: -60px; right: -80px;
+            animation-delay: -6s;
+            animation-duration: 15s;
+        }
+        @keyframes floatOrb {
+            0%   { transform: translate(0, 0) scale(1); }
+            50%  { transform: translate(40px, -30px) scale(1.1); }
+            100% { transform: translate(-20px, 20px) scale(0.95); }
         }
         #game-container {
             display: flex;
@@ -28,19 +58,37 @@
             align-items: center;
             gap: 14px;
             padding: 28px 24px 20px;
-            background: rgba(16, 16, 40, 0.55);
-            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(16, 16, 40, 0.6);
+            border: 1px solid rgba(255,255,255,0.08);
             border-radius: 20px;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 12px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset;
+            backdrop-filter: blur(20px) saturate(1.3);
+            box-shadow:
+                0 12px 48px rgba(0,0,0,0.5),
+                0 0 0 1px rgba(255,255,255,0.04) inset,
+                0 0 80px -20px rgba(58,123,213,0.08);
+            animation: containerIn 0.6s ease-out;
+        }
+        @keyframes containerIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         h1 {
             font-family: 'Playfair Display', Georgia, serif;
             font-size: 1.75rem;
             font-weight: 700;
             color: #fff;
-            letter-spacing: 2px;
-            text-shadow: 0 2px 12px rgba(91,200,91,0.15);
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(58,123,213,0.3), 0 2px 8px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #ffffff 0%, #a8c8ff 50%, #ffffff 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 4s linear infinite;
+        }
+        @keyframes shimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
         }
 
         /* --- Mode Switch Tabs --- */
@@ -71,7 +119,8 @@
         #mode-switch button.active {
             background: linear-gradient(135deg, #3a7bd5 0%, #5b68d4 100%);
             color: #fff;
-            box-shadow: 0 3px 12px rgba(58,123,213,0.35);
+            box-shadow: 0 3px 16px rgba(58,123,213,0.4), 0 0 20px rgba(58,123,213,0.15);
+            transform: scale(1.02);
         }
 
         /* --- Controls (Spielen) --- */
@@ -130,11 +179,25 @@
             background: linear-gradient(135deg, #3a7bd5, #5b68d4);
             border-color: transparent;
             color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-accent::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .btn-accent:hover::after {
+            opacity: 1;
         }
         .btn-accent:hover {
             background: linear-gradient(135deg, #4a8be5, #6b78e4);
             color: #fff;
-            box-shadow: 0 4px 14px rgba(58,123,213,0.35);
+            box-shadow: 0 4px 18px rgba(58,123,213,0.4), 0 0 30px rgba(58,123,213,0.15);
         }
 
         /* --- Status Bar --- */
@@ -142,13 +205,28 @@
             font-size: 0.95rem;
             font-weight: 500;
             padding: 10px 24px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.06);
+            background: linear-gradient(135deg, rgba(58,123,213,0.08), rgba(91,104,212,0.06));
+            border: 1px solid rgba(58,123,213,0.12);
             border-radius: 10px;
             min-width: 340px;
             text-align: center;
             letter-spacing: 0.2px;
             color: #c8c8e8;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        #status::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+            animation: statusShine 3s ease-in-out infinite;
+        }
+        @keyframes statusShine {
+            0%, 100% { left: -100%; }
+            50%      { left: 100%; }
         }
 
         /* --- Training Controls --- */
@@ -167,9 +245,10 @@
         }
         #puzzle-title {
             font-size: 0.92rem;
-            font-weight: 500;
+            font-weight: 600;
             color: #d4a853;
             letter-spacing: 0.3px;
+            text-shadow: 0 0 12px rgba(212,168,83,0.2);
         }
         #puzzle-hint {
             font-size: 0.88rem;
@@ -204,12 +283,40 @@
 
         /* --- Phaser Canvas --- */
         #phaser-game {
-            border-radius: 12px;
+            border-radius: 14px;
             overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            box-shadow:
+                0 8px 32px rgba(0,0,0,0.4),
+                0 0 60px -10px rgba(58,123,213,0.12),
+                inset 0 0 0 1px rgba(255,255,255,0.05);
+            transition: box-shadow 0.4s ease;
+        }
+        #phaser-game:hover {
+            box-shadow:
+                0 12px 40px rgba(0,0,0,0.5),
+                0 0 80px -10px rgba(58,123,213,0.18),
+                inset 0 0 0 1px rgba(255,255,255,0.08);
         }
         #phaser-game canvas {
-            border-radius: 12px;
+            border-radius: 14px;
+        }
+
+        /* --- Footer --- */
+        #footer-credit {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.18);
+            letter-spacing: 1px;
+            font-weight: 400;
+            margin-top: 4px;
+        }
+
+        /* --- Particles Background --- */
+        #particles-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            pointer-events: none;
         }
 
         /* --- Scrollbar --- */
@@ -375,7 +482,9 @@
         </div>
         <div id="status">Du bist am Zug</div>
         <div id="phaser-game"></div>
+        <div id="footer-credit">made with ♟</div>
     </div>
+    <canvas id="particles-bg"></canvas>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="js/constants.js"></script>
@@ -387,5 +496,40 @@
     <script src="js/scenes/ExerciseScene.js"></script>
     <script src="js/scenes/TrainingScene.js"></script>
     <script src="js/main.js"></script>
+    <script>
+    // Subtle floating particles
+    (function() {
+        const c = document.getElementById('particles-bg');
+        if (!c) return;
+        const ctx = c.getContext('2d');
+        let w, h, particles = [];
+        function resize() { w = c.width = window.innerWidth; h = c.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+        for (let i = 0; i < 35; i++) {
+            particles.push({
+                x: Math.random() * w, y: Math.random() * h,
+                r: Math.random() * 1.8 + 0.5,
+                dx: (Math.random() - 0.5) * 0.3,
+                dy: (Math.random() - 0.5) * 0.3,
+                o: Math.random() * 0.25 + 0.05,
+            });
+        }
+        function draw() {
+            ctx.clearRect(0, 0, w, h);
+            particles.forEach(p => {
+                p.x += p.dx; p.y += p.dy;
+                if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+                if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(160,190,255,' + p.o + ')';
+                ctx.fill();
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    })();
+    </script>
 </body>
 </html>
