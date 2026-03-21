@@ -3,9 +3,32 @@
 // ============================================
 
 const BOARD_SIZE = 8;
-const TILE_SIZE = 80;
-const BOARD_OFFSET_X = 40;
-const BOARD_OFFSET_Y = 40;
+let TILE_SIZE = 80;
+let BOARD_OFFSET_X = 40;
+let BOARD_OFFSET_Y = 40;
+let GAME_WIDTH = BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_X * 2;
+let GAME_HEIGHT = BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_Y * 2 + 20;
+
+function updateBoardLayout() {
+    const viewportWidth = Math.min(window.innerWidth || 1280, document.documentElement.clientWidth || 1280);
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
+    if (isTouchDevice) {
+        const maxBoardWidth = Math.min(520, viewportWidth - 32);
+        TILE_SIZE = Math.max(52, Math.min(72, Math.floor(maxBoardWidth / BOARD_SIZE)));
+        BOARD_OFFSET_X = Math.max(18, Math.round(TILE_SIZE * 0.42));
+        BOARD_OFFSET_Y = Math.max(18, Math.round(TILE_SIZE * 0.42));
+    } else {
+        TILE_SIZE = 80;
+        BOARD_OFFSET_X = 40;
+        BOARD_OFFSET_Y = 40;
+    }
+
+    GAME_WIDTH = BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_X * 2;
+    GAME_HEIGHT = BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_Y * 2 + Math.max(18, Math.round(TILE_SIZE * 0.25));
+}
+
+updateBoardLayout();
 
 const COLORS = {
     LIGHT_TILE: 0xf0d9b5,

@@ -2,21 +2,16 @@
 // Phaser Spielkonfiguration
 // ============================================
 
-// Auf Touch-Geräten (iPad) die max-Breite beschränken
-const isTouch = window.matchMedia('(pointer: coarse)').matches;
-const maxCanvasWidth = isTouch ? Math.min(540, window.innerWidth * 0.88) : undefined;
-
 const config = {
     type: Phaser.AUTO,
-    width: BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_X * 2,
-    height: BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_Y * 2 + 20,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
     parent: 'phaser-game',
     backgroundColor: '#16213e',
     scene: [BootScene, GameScene, ExerciseScene, TrainingScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        max: maxCanvasWidth ? { width: maxCanvasWidth, height: maxCanvasWidth * (700 / 720) } : undefined,
     },
 };
 
