@@ -19,45 +19,74 @@ const game = new Phaser.Game(config);
 
 // ---- Modus-Umschaltung ----
 let currentMode = 'play';
+let trainingStarted = false;
 
 function switchMode(mode) {
+    if (currentMode === mode) return;
     currentMode = mode;
+
     document.getElementById('btn-mode-play').classList.toggle('active', mode === 'play');
     document.getElementById('btn-mode-train').classList.toggle('active', mode === 'train');
     document.getElementById('controls').style.display = mode === 'play' ? 'flex' : 'none';
     document.getElementById('training-controls').style.display = mode === 'train' ? 'flex' : 'none';
 
     if (mode === 'play') {
-        game.scene.stop('TrainingScene');
-        game.scene.start('GameScene');
+        if (trainingStarted) {
+            game.scene.stop('TrainingScene');
+        }
+        // Kurze Verzögerung damit Phaser die alte Szene verarbeiten kann
+        setTimeout(() => { game.scene.start('GameScene'); }, 50);
     } else {
         const catSelect = document.getElementById('puzzle-category');
+        const catValue = catSelect ? catSelect.value : PUZZLE_CATEGORIES[0].id;
         game.scene.stop('GameScene');
-        game.scene.start('TrainingScene', {
-            category: catSelect.value,
-            puzzleIndex: 0,
-        });
+        trainingStarted = true;
+        setTimeout(() => {
+            game.scene.start('TrainingScene', {
+                category: catValue,
+                puzzleIndex: 0,
+            });
+        }, 50);
     }
 }
 
-// ---- Kategorien-Dropdown füllen ----
+// ---- Kategorien-Dropdown füllen & Event-Listener ----
 document.addEventListener('DOMContentLoaded', () => {
+    // Mode-Switch Buttons
+    document.getElementById('btn-mode-play').addEventListener('click', () => switchMode('play'));
+    document.getElementById('btn-mode-train').addEventListener('click', () => switchMode('train'));
+
     const catSelect = document.getElementById('puzzle-category');
     if (catSelect && typeof PUZZLE_CATEGORIES !== 'undefined') {
+        // Übungen (Lern-Übungen)
+        const uebungenGroup = document.createElement('optgroup');
+        uebungenGroup.label = '\uD83D\uDCD6 Übungen';
+        const puzzleGroup = document.createElement('optgroup');
+        puzzleGroup.label = '\uD83E\uDDE9 Puzzles';
+
         PUZZLE_CATEGORIES.forEach(cat => {
             const opt = document.createElement('option');
             opt.value = cat.id;
             opt.textContent = cat.icon + ' ' + cat.name;
-            catSelect.appendChild(opt);
+            if (cat.type === 'uebung') {
+                uebungenGroup.appendChild(opt);
+            } else {
+                puzzleGroup.appendChild(opt);
+            }
         });
+
+        catSelect.appendChild(uebungenGroup);
+        catSelect.appendChild(puzzleGroup);
 
         catSelect.addEventListener('change', () => {
             if (currentMode === 'train') {
                 game.scene.stop('TrainingScene');
-                game.scene.start('TrainingScene', {
-                    category: catSelect.value,
-                    puzzleIndex: 0,
-                });
+                setTimeout(() => {
+                    game.scene.start('TrainingScene', {
+                        category: catSelect.value,
+                        puzzleIndex: 0,
+                    });
+                }, 50);
             }
         });
     }
@@ -66,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-prev-puzzle').addEventListener('click', () => {
         if (currentMode !== 'train') return;
         const ts = game.scene.getScene('TrainingScene');
-        if (ts) {
+        if (ts && ts.scene.isActive()) {
             ts.currentPuzzleIndex--;
             ts._loadPuzzle();
         }
@@ -75,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-next-puzzle').addEventListener('click', () => {
         if (currentMode !== 'train') return;
         const ts = game.scene.getScene('TrainingScene');
-        if (ts) {
+        if (ts && ts.scene.isActive()) {
             ts.currentPuzzleIndex++;
             ts._loadPuzzle();
         }
@@ -91,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-reset-puzzle').addEventListener('click', () => {
         if (currentMode !== 'train') return;
         const ts = game.scene.getScene('TrainingScene');
-        if (ts) {
+        if (ts && ts.scene.isActive()) {
             ts._loadPuzzle();
         }
     });

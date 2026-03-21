@@ -1245,15 +1245,15 @@ const PUZZLES = [
 },
 ];
 
-// Kategorien-Info
+// Kategorien-Info (type: 'uebung' = Lern-Übungen, 'puzzle' = Taktik-Puzzles)
 const PUZZLE_CATEGORIES = [
-    { id: 'matt-dame', name: 'Matt mit Dame', icon: '\u2655', description: 'Lerne mit Dame und König mattzusetzen.' },
-    { id: 'matt-tuerme', name: 'Matt mit 2 Türmen', icon: '\u2656\u2656', description: 'Treppenmatt mit zwei Türmen.' },
-    { id: 'matt-turm', name: 'Matt mit Turm', icon: '\u2656', description: 'Matt mit König und Turm.' },
-    { id: 'matt-in-1', name: 'Matt in 1 Zug', icon: '1\u2658', description: 'Finde das Matt in einem Zug!' },
-    { id: 'matt-in-2', name: 'Matt in 2 Zügen', icon: '2\u2658', description: 'Finde das Matt in zwei Zügen!' },
-    { id: 'taktik-gabel', name: 'Gabel', icon: '\u2658', description: 'Greife zwei Figuren gleichzeitig an.' },
-    { id: 'taktik-fesselung', name: 'Fesselung', icon: '\u2657', description: 'Fessele gegnerische Figuren.' },
-    { id: 'taktik-spiess', name: 'Spieß', icon: '\u2656', description: 'Schach + Figur dahinter gewinnen.' },
-    { id: 'endspiel', name: 'Endspiele', icon: '\u2659', description: 'Bauern- und Turmendspiele meistern.' },
+    { id: 'matt-dame', name: 'Matt mit Dame', icon: '\u2655', type: 'uebung', description: 'Lerne mit Dame und König mattzusetzen.' },
+    { id: 'matt-tuerme', name: 'Matt mit 2 Türmen', icon: '\u2656\u2656', type: 'uebung', description: 'Treppenmatt mit zwei Türmen.' },
+    { id: 'matt-turm', name: 'Matt mit Turm', icon: '\u2656', type: 'uebung', description: 'Matt mit König und Turm.' },
+    { id: 'matt-in-1', name: 'Matt in 1 Zug', icon: '1\u2658', type: 'puzzle', description: 'Finde das Matt in einem Zug!' },
+    { id: 'matt-in-2', name: 'Matt in 2 Zügen', icon: '2\u2658', type: 'puzzle', description: 'Finde das Matt in zwei Zügen!' },
+    { id: 'taktik-gabel', name: 'Gabel', icon: '\u2658', type: 'puzzle', description: 'Greife zwei Figuren gleichzeitig an.' },
+    { id: 'taktik-fesselung', name: 'Fesselung', icon: '\u2657', type: 'puzzle', description: 'Fessele gegnerische Figuren.' },
+    { id: 'taktik-spiess', name: 'Spieß', icon: '\u2656', type: 'puzzle', description: 'Schach + Figur dahinter gewinnen.' },
+    { id: 'endspiel', name: 'Endspiele', icon: '\u2659', type: 'puzzle', description: 'Bauern- und Turmendspiele meistern.' },
 ];

@@ -8,6 +8,7 @@ class TrainingScene extends Phaser.Scene {
     }
 
     init(data) {
+        data = data || {};
         this.currentCategory = data.category || PUZZLE_CATEGORIES[0].id;
         this.currentPuzzleIndex = data.puzzleIndex || 0;
     }
@@ -129,6 +130,12 @@ class TrainingScene extends Phaser.Scene {
         }
         this.chess.currentTurn = this.puzzle.playerColor || COLOR.WHITE;
         this.chess.gameOver = false;
+        // Rochade deaktivieren für Puzzles
+        this.chess.castlingRights = {
+            white: { kingSide: false, queenSide: false },
+            black: { kingSide: false, queenSide: false },
+        };
+        this.chess.enPassantTarget = null;
 
         this.selectedTile = null;
         this.clearHighlights();
