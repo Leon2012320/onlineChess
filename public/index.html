@@ -66,11 +66,84 @@
             min-width: 300px;
             text-align: center;
         }
+        #mode-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        #mode-switch button {
+            padding: 8px 18px;
+            border: 2px solid #334;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-family: inherit;
+            background: #16213e;
+            color: #e0e0e0;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        #mode-switch button.active {
+            background: #0f3460;
+            border-color: #5bc85b;
+            color: #fff;
+        }
+        #training-controls {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        #training-controls .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #training-controls select, #training-controls button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #training-controls select {
+            background: #16213e;
+            color: #e0e0e0;
+            border: 1px solid #334;
+        }
+        #training-controls button {
+            background: #0f3460;
+            color: #e0e0e0;
+            transition: background 0.2s;
+        }
+        #training-controls button:hover {
+            background: #1a5276;
+        }
+        #puzzle-title {
+            font-size: 0.95rem;
+            color: #c4a265;
+        }
+        #puzzle-hint {
+            font-size: 0.9rem;
+            color: #7fc97f;
+            min-height: 1.2em;
+            cursor: pointer;
+        }
+        #puzzle-progress {
+            font-size: 0.85rem;
+            color: #888;
+        }
     </style>
 </head>
 <body>
     <div id="game-container">
-        <h1>&#9816; Schach vs Engine</h1>
+        <h1>&#9816; Schach</h1>
+        <div id="mode-switch">
+            <button id="btn-mode-play" class="active" onclick="switchMode('play')">⚔ Spielen</button>
+            <button id="btn-mode-train" onclick="switchMode('train')">🧩 Training</button>
+        </div>
         <div id="controls">
             <select id="play-as" title="Spielfarbe">
                 <option value="white">Spielen als Weiß</option>
@@ -83,6 +156,20 @@
             </select>
             <button id="btn-new-game">Neues Spiel</button>
         </div>
+        <div id="training-controls">
+            <div class="row">
+                <select id="puzzle-category"></select>
+                <button id="btn-prev-puzzle">← Zurück</button>
+                <button id="btn-next-puzzle">Weiter →</button>
+            </div>
+            <div class="row">
+                <button id="btn-hint">💡 Hinweis</button>
+                <button id="btn-reset-puzzle">↻ Neustart</button>
+            </div>
+            <div id="puzzle-title"></div>
+            <div id="puzzle-hint"></div>
+            <div id="puzzle-progress"></div>
+        </div>
         <div id="status">Du bist am Zug</div>
         <div id="phaser-game"></div>
     </div>
@@ -91,10 +178,10 @@
     <script src="js/constants.js"></script>
     <script src="js/chessLogic.js"></script>
     <script src="js/chessEngine.js"></script>
+    <script src="js/puzzleDatabase.js"></script>
     <script src="js/scenes/BootScene.js"></script>
     <script src="js/scenes/GameScene.js"></script>
+    <script src="js/scenes/TrainingScene.js"></script>
     <script src="js/main.js"></script>
-</body>
-</html>
 </body>
 </html>
