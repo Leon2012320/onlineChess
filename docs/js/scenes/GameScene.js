@@ -28,31 +28,54 @@ class GameScene extends Phaser.Scene {
 
     // ---- Brett zeichnen ----
     drawBoard() {
+        // Holzrahmen
         this.add
             .rectangle(
                 BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2,
                 BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2,
-                BOARD_SIZE * TILE_SIZE + 8,
-                BOARD_SIZE * TILE_SIZE + 8,
-                0x333333
+                BOARD_SIZE * TILE_SIZE + 20,
+                BOARD_SIZE * TILE_SIZE + 20,
+                0x5c3317
             )
             .setOrigin(0.5);
+        this.add
+            .rectangle(
+                BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2,
+                BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2,
+                BOARD_SIZE * TILE_SIZE + 12,
+                BOARD_SIZE * TILE_SIZE + 12,
+                0x7a4b2a
+            )
+            .setOrigin(0.5);
+        this.add
+            .rectangle(
+                BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2,
+                BOARD_OFFSET_Y + (BOARD_SIZE * TILE_SIZE) / 2,
+                BOARD_SIZE * TILE_SIZE + 4,
+                BOARD_SIZE * TILE_SIZE + 4,
+                0x3e1f0d
+            )
+            .setOrigin(0.5);
+
+        // Felder mit Holztextur
+        this._createWoodTileTextures();
 
         for (let row = 0; row < BOARD_SIZE; row++) {
             this.tileGraphics[row] = [];
             for (let col = 0; col < BOARD_SIZE; col++) {
                 const isLight = (row + col) % 2 === 0;
-                const color = isLight ? COLORS.LIGHT_TILE : COLORS.DARK_TILE;
                 const x = BOARD_OFFSET_X + col * TILE_SIZE;
                 const y = BOARD_OFFSET_Y + row * TILE_SIZE;
 
-                const tile = this.add.rectangle(
-                    x + TILE_SIZE / 2,
-                    y + TILE_SIZE / 2,
-                    TILE_SIZE,
-                    TILE_SIZE,
-                    color
+                const texKey = isLight ? '_woodLight' : '_woodDark';
+                const tile = this.add.image(x + TILE_SIZE / 2, y + TILE_SIZE / 2, texKey);
+                // Farbton-Overlay für Highlights speichern
+                const overlay = this.add.rectangle(
+                    x + TILE_SIZE / 2, y + TILE_SIZE / 2,
+                    TILE_SIZE, TILE_SIZE, 0x000000, 0
                 );
+                tile._overlay = overlay;
+                tile._isLight = isLight;
                 this.tileGraphics[row][col] = tile;
             }
         }
@@ -61,18 +84,60 @@ class GameScene extends Phaser.Scene {
         for (let i = 0; i < 8; i++) {
             this.add.text(
                 BOARD_OFFSET_X + i * TILE_SIZE + TILE_SIZE / 2,
-                BOARD_OFFSET_Y + BOARD_SIZE * TILE_SIZE + 5,
+                BOARD_OFFSET_Y + BOARD_SIZE * TILE_SIZE + 8,
                 files[i],
-                { fontSize: '14px', color: '#aaaaaa' }
+                { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }
             ).setOrigin(0.5, 0);
 
             this.add.text(
                 BOARD_OFFSET_X - 20,
                 BOARD_OFFSET_Y + i * TILE_SIZE + TILE_SIZE / 2,
                 String(8 - i),
-                { fontSize: '14px', color: '#aaaaaa' }
+                { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }
             ).setOrigin(0.5);
         }
+    }
+
+    _createWoodTileTextures() {
+        // Helles Holzfeld
+        const canvasL = document.createElement('canvas');
+        canvasL.width = TILE_SIZE;
+        canvasL.height = TILE_SIZE;
+        const ctxL = canvasL.getContext('2d');
+        this._drawWoodTile(ctxL, TILE_SIZE, '#e8d5a8', '#d4c091', '#c9b57a');
+        this.textures.addCanvas('_woodLight', canvasL);
+
+        // Dunkles Holzfeld
+        const canvasD = document.createElement('canvas');
+        canvasD.width = TILE_SIZE;
+        canvasD.height = TILE_SIZE;
+        const ctxD = canvasD.getContext('2d');
+        this._drawWoodTile(ctxD, TILE_SIZE, '#a0734a', '#8b613c', '#7a5230');
+        this.textures.addCanvas('_woodDark', canvasD);
+    }
+
+    _drawWoodTile(ctx, size, baseColor, grainColor1, grainColor2) {
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(0, 0, size, size);
+        // Holzmaserung
+        ctx.globalAlpha = 0.18;
+        for (let i = 0; i < 12; i++) {
+            ctx.strokeStyle = i % 2 === 0 ? grainColor1 : grainColor2;
+            ctx.lineWidth = 1 + Math.random() * 1.5;
+            ctx.beginPath();
+            const y = (size / 12) * i + Math.random() * 4;
+            ctx.moveTo(0, y);
+            ctx.quadraticCurveTo(
+                size * 0.3, y + (Math.random() - 0.5) * 6,
+                size * 0.5, y + (Math.random() - 0.5) * 4
+            );
+            ctx.quadraticCurveTo(
+                size * 0.7, y + (Math.random() - 0.5) * 6,
+                size, y + (Math.random() - 0.5) * 3
+            );
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
     }
 
     // ---- Figuren zeichnen ----
@@ -206,7 +271,7 @@ class GameScene extends Phaser.Scene {
         this.clearMoveIndicators();
         this.selectedTile = { row, col };
 
-        this.tileGraphics[row][col].setFillStyle(COLORS.SELECTED);
+        this._setTileOverlay(row, col, COLORS.SELECTED, 0.45);
 
         const moves = this.chess.getLegalMoves(row, col);
         for (const move of moves) {
@@ -230,11 +295,15 @@ class GameScene extends Phaser.Scene {
     clearHighlights() {
         for (let row = 0; row < BOARD_SIZE; row++) {
             for (let col = 0; col < BOARD_SIZE; col++) {
-                const isLight = (row + col) % 2 === 0;
-                this.tileGraphics[row][col].setFillStyle(
-                    isLight ? COLORS.LIGHT_TILE : COLORS.DARK_TILE
-                );
+                this._setTileOverlay(row, col, 0x000000, 0);
             }
+        }
+    }
+
+    _setTileOverlay(row, col, color, alpha) {
+        const tile = this.tileGraphics[row][col];
+        if (tile._overlay) {
+            tile._overlay.setFillStyle(color, alpha);
         }
     }
 
@@ -246,8 +315,8 @@ class GameScene extends Phaser.Scene {
     highlightLastMove() {
         if (!this.lastMove) return;
         const { from, to } = this.lastMove;
-        this.tileGraphics[from.row][from.col].setFillStyle(COLORS.LAST_MOVE);
-        this.tileGraphics[to.row][to.col].setFillStyle(COLORS.LAST_MOVE);
+        this._setTileOverlay(from.row, from.col, COLORS.LAST_MOVE, 0.35);
+        this._setTileOverlay(to.row, to.col, COLORS.LAST_MOVE, 0.35);
     }
 
     // ---- Status ----
@@ -267,7 +336,7 @@ class GameScene extends Phaser.Scene {
                 : 'Schachmatt! Die Engine hat gewonnen.';
             const king = this.chess.findKing(this.chess.currentTurn);
             if (king) {
-                this.tileGraphics[king.row][king.col].setFillStyle(COLORS.CHECK);
+                this._setTileOverlay(king.row, king.col, COLORS.CHECK, 0.5);
             }
         } else if (moveResult.stalemate) {
             statusEl.textContent = 'Patt! Unentschieden!';
@@ -276,7 +345,7 @@ class GameScene extends Phaser.Scene {
             statusEl.textContent = `${inCheck} im Schach!`;
             const king = this.chess.findKing(this.chess.currentTurn);
             if (king) {
-                this.tileGraphics[king.row][king.col].setFillStyle(COLORS.CHECK);
+                this._setTileOverlay(king.row, king.col, COLORS.CHECK, 0.5);
             }
         } else {
             const turn = this.chess.currentTurn === this.playerColor ? 'Du bist' : 'Engine ist';
