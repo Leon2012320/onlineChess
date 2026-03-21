@@ -19,10 +19,12 @@ class TrainingScene extends Phaser.Scene {
         this.legalMoveIndicators = [];
         this.pieceSprites = [];
         this.tileGraphics = [];
+        this.coordLabels = [];
         this.puzzleSolved = false;
         this.solutionMoves = [];
         this.solutionIndex = 0;
         this.playerColor = null;
+        this.flipped = false;
         this.loading = false;
 
         this._createWoodTileTextures();
@@ -64,6 +66,12 @@ class TrainingScene extends Phaser.Scene {
         ctx.globalAlpha = 1;
     }
 
+    // ---- Koordinaten-Umrechnung (flipped) ----
+    _viewRow(boardRow) { return this.flipped ? 7 - boardRow : boardRow; }
+    _viewCol(boardCol) { return this.flipped ? 7 - boardCol : boardCol; }
+    _boardRow(viewRow) { return this.flipped ? 7 - viewRow : viewRow; }
+    _boardCol(viewCol) { return this.flipped ? 7 - viewCol : viewCol; }
+
     // ---- Brett ----
     drawBoard() {
         const cx = BOARD_OFFSET_X + (BOARD_SIZE * TILE_SIZE) / 2;
@@ -85,11 +93,18 @@ class TrainingScene extends Phaser.Scene {
                 this.tileGraphics[row][col] = tile;
             }
         }
+    }
 
+    _drawCoordLabels() {
+        this.coordLabels.forEach(l => l.destroy());
+        this.coordLabels = [];
         const files = ['a','b','c','d','e','f','g','h'];
         for (let i = 0; i < 8; i++) {
-            this.add.text(BOARD_OFFSET_X + i * TILE_SIZE + TILE_SIZE / 2, BOARD_OFFSET_Y + BOARD_SIZE * TILE_SIZE + 8, files[i], { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }).setOrigin(0.5, 0);
-            this.add.text(BOARD_OFFSET_X - 20, BOARD_OFFSET_Y + i * TILE_SIZE + TILE_SIZE / 2, String(8 - i), { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }).setOrigin(0.5);
+            const fileIdx = this.flipped ? 7 - i : i;
+            const rankNum = this.flipped ? i + 1 : 8 - i;
+            const fl = this.add.text(BOARD_OFFSET_X + i * TILE_SIZE + TILE_SIZE / 2, BOARD_OFFSET_Y + BOARD_SIZE * TILE_SIZE + 8, files[fileIdx], { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }).setOrigin(0.5, 0);
+            const rl = this.add.text(BOARD_OFFSET_X - 20, BOARD_OFFSET_Y + i * TILE_SIZE + TILE_SIZE / 2, String(rankNum), { fontSize: '14px', color: '#c4a265', fontFamily: 'serif' }).setOrigin(0.5);
+            this.coordLabels.push(fl, rl);
         }
     }
 
@@ -97,12 +112,14 @@ class TrainingScene extends Phaser.Scene {
     drawPieces() {
         this.pieceSprites.forEach(s => s.destroy());
         this.pieceSprites = [];
-        for (let row = 0; row < BOARD_SIZE; row++) {
-            for (let col = 0; col < BOARD_SIZE; col++) {
-                const piece = this.chess.getPiece(row, col);
+        for (let boardRow = 0; boardRow < BOARD_SIZE; boardRow++) {
+            for (let boardCol = 0; boardCol < BOARD_SIZE; boardCol++) {
+                const piece = this.chess.getPiece(boardRow, boardCol);
                 if (piece) {
-                    const x = BOARD_OFFSET_X + col * TILE_SIZE + TILE_SIZE / 2;
-                    const y = BOARD_OFFSET_Y + row * TILE_SIZE + TILE_SIZE / 2;
+                    const vr = this._viewRow(boardRow);
+                    const vc = this._viewCol(boardCol);
+                    const x = BOARD_OFFSET_X + vc * TILE_SIZE + TILE_SIZE / 2;
+                    const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
                     const key = `${piece.color}_${piece.type}`;
                     const sprite = this.add.image(x, y, key);
                     this.pieceSprites.push(sprite);
@@ -114,6 +131,7 @@ class TrainingScene extends Phaser.Scene {
     // ---- Puzzle von Lichess laden ----
     async _fetchPuzzle() {
         this.loading = true;
+        this.puzzleSolved = false;
         document.getElementById('status').textContent = 'Puzzle wird geladen...';
 
         try {
@@ -122,65 +140,77 @@ class TrainingScene extends Phaser.Scene {
             if (!resp.ok) throw new Error('API Fehler: ' + resp.status);
             const data = await resp.json();
 
-            // PGN abspielen bis zum initialPly um die Puzzle-Position zu bekommen
+            // PGN abspielen bis zum initialPly
             this.chess.reset();
             const pgn = data.game.pgn;
             const pgnMoves = pgn.split(/\s+/).filter(m => m && !m.match(/^\d+\./) && m !== '*');
             const initialPly = data.puzzle.initialPly;
 
-            // Alle PGN-Züge bis zum initialPly abspielen
-            for (let i = 0; i < initialPly && i < pgnMoves.length; i++) {
+            // Alle PGN-Züge bis initialPly abspielen (incl. move at index initialPly = opponent setup)
+            for (let i = 0; i <= initialPly && i < pgnMoves.length; i++) {
                 const success = this._playSanMove(pgnMoves[i]);
                 if (!success) {
-                    throw new Error('Konnte PGN-Zug nicht abspielen: ' + pgnMoves[i] + ' bei Ply ' + i);
+                    throw new Error('PGN-Fehler: ' + pgnMoves[i] + ' bei Ply ' + i);
                 }
             }
 
-            // solution enthält UCI-Züge, der erste ist der Gegnerzug
+            // Nach allen PGN-Zügen ist der Spieler am Zug
+            this.playerColor = this.chess.currentTurn;
+            this.flipped = (this.playerColor === COLOR.BLACK);
+
+            // Solution = Spielerzüge (abwechselnd Spieler/Gegner, Start = Spieler)
             this.solutionMoves = data.puzzle.solution;
             this.solutionIndex = 0;
             this.puzzleRating = data.puzzle.rating;
             this.puzzleId = data.puzzle.id;
-            this.puzzleSolved = false;
-
-            // Erster Zug der Solution = Gegnerzug (die Stellung vor dem Puzzle)
-            const opponentUci = this.solutionMoves[0];
-            this.chess.makeUciMove(opponentUci);
-            this.solutionIndex = 1;
-
-            // Spielerfarbe bestimmen (Spieler ist am Zug nach dem Gegnerzug)
-            this.playerColor = this.chess.currentTurn;
 
             this.loading = false;
+            this.selectedTile = null;
+
+            // Koordinaten und Brett aktualisieren
+            this._drawCoordLabels();
             this.clearHighlights();
             this.drawPieces();
 
-            // Gegnerzug hervorheben
-            const fromCol = opponentUci.charCodeAt(0) - 97;
-            const fromRow = 8 - parseInt(opponentUci[1]);
-            const toCol = opponentUci.charCodeAt(2) - 97;
-            const toRow = 8 - parseInt(opponentUci[3]);
-            this._setTileOverlay(fromRow, fromCol, COLORS.LAST_MOVE, 0.35);
-            this._setTileOverlay(toRow, toCol, COLORS.LAST_MOVE, 0.35);
+            // Letzten Gegnerzug (PGN[initialPly]) hervorheben
+            if (initialPly < pgnMoves.length) {
+                this._highlightLastSanMove(pgnMoves[initialPly]);
+            }
 
             this._updateUI();
         } catch (err) {
             this.loading = false;
-            document.getElementById('status').textContent = 'Fehler beim Laden: ' + err.message;
+            document.getElementById('status').textContent = 'Fehler: ' + err.message;
+            // Bei Fehler automatisch nächstes Puzzle versuchen
+            this.time.delayedCall(2000, () => this._fetchPuzzle());
         }
     }
 
-    // ---- SAN-Zug abspielen (mit eigenem ChessLogic) ----
+    // Letzten SAN-Zug hervorheben (ungefähr - wir kennen nur die Zielfelder)
+    _highlightLastSanMove(san) {
+        let s = san.replace(/[+#!?]/g, '');
+        if (s === 'O-O' || s === 'O-O-O') return;
+        s = s.replace(/=[QRBN]/g, '');
+        s = s.replace('x', '');
+        const target = s.slice(-2);
+        if (target.length === 2) {
+            const toCol = target.charCodeAt(0) - 97;
+            const toRow = 8 - parseInt(target[1]);
+            const vc = this._viewCol(toCol);
+            const vr = this._viewRow(toRow);
+            this._setViewOverlay(vr, vc, COLORS.LAST_MOVE, 0.35);
+        }
+    }
+
+    // ---- SAN-Zug abspielen ----
     _playSanMove(san) {
-        // SAN parsen: z.B. "Nf3", "e4", "Bxe5", "O-O", "Qd1+", "exd5", "e8=Q"
-        let s = san.replace(/[+#!?]/g, ''); // Schach/Matt-Symbole entfernen
+        let s = san.replace(/[+#!?]/g, '');
 
         // Rochade
         if (s === 'O-O' || s === 'O-O-O') {
             const row = this.chess.currentTurn === COLOR.WHITE ? 7 : 0;
-            const kingCol = 4;
             const targetCol = s === 'O-O' ? 6 : 2;
-            return !!this.chess.makeMove(row, kingCol, row, targetCol);
+            return !!this.chess.makeMove(row, 4, row, targetCol);
         }
 
         let promotion = null;
@@ -191,14 +221,12 @@ class TrainingScene extends Phaser.Scene {
             promotion = promoMap[parts[1]] || PIECE.QUEEN;
         }
 
-        const isCapture = s.includes('x');
         s = s.replace('x', '');
 
-        // Zielfeld (immer letzte 2 Zeichen)
+        // Zielfeld (letzte 2 Zeichen)
         const targetSquare = s.slice(-2);
         const toCol = targetSquare.charCodeAt(0) - 97;
         const toRow = 8 - parseInt(targetSquare[1]);
-
         s = s.slice(0, -2);
 
         // Figurkürzel
@@ -209,7 +237,7 @@ class TrainingScene extends Phaser.Scene {
             s = s.slice(1);
         }
 
-        // Disambiguierung (Spalte, Reihe, oder beides)
+        // Disambiguierung
         let disambigCol = -1, disambigRow = -1;
         for (const ch of s) {
             if (ch >= 'a' && ch <= 'h') disambigCol = ch.charCodeAt(0) - 97;
@@ -244,11 +272,12 @@ class TrainingScene extends Phaser.Scene {
         const cat = PUZZLE_CATEGORIES.find(c => c.id === this.puzzleCategoryId);
         const catName = cat ? cat.name : 'Puzzle';
         const rating = this.puzzleRating || '?';
+        const colorText = this.playerColor === COLOR.BLACK ? 'Schwarz' : 'Weiß';
 
         if (this.puzzleSolved) {
             document.getElementById('status').textContent = '✓ Richtig! Gut gemacht!';
         } else if (!this.loading) {
-            document.getElementById('status').textContent = `${catName} — Rating: ${rating} — Dein Zug`;
+            document.getElementById('status').textContent = `${catName} (${colorText}) — Rating: ${rating} — Dein Zug`;
         }
 
         const titleEl = document.getElementById('puzzle-title');
@@ -267,10 +296,14 @@ class TrainingScene extends Phaser.Scene {
     // ---- Eingabe ----
     _setupInput() {
         this.input.on('pointerdown', (pointer) => {
-            const col = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
-            const row = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
-            if (row < 0 || row > 7 || col < 0 || col > 7) return;
-            this._handleClick(row, col);
+            // View-Koordinaten
+            const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
+            const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
+            if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) return;
+            // In Board-Koordinaten umrechnen
+            const boardRow = this._boardRow(viewRow);
+            const boardCol = this._boardCol(viewCol);
+            this._handleClick(boardRow, boardCol);
         });
     }
 
@@ -291,8 +324,8 @@ class TrainingScene extends Phaser.Scene {
                     this.solutionIndex++;
                     this.clearHighlights();
                     this.clearMoveIndicators();
-                    this._setTileOverlay(from.row, from.col, 0x66cc66, 0.4);
-                    this._setTileOverlay(row, col, 0x66cc66, 0.4);
+                    this._setBoardOverlay(from.row, from.col, 0x66cc66, 0.4);
+                    this._setBoardOverlay(row, col, 0x66cc66, 0.4);
                     this.drawPieces();
                     this.selectedTile = null;
 
@@ -303,28 +336,13 @@ class TrainingScene extends Phaser.Scene {
                     }
 
                     // Gegnerzug abspielen
-                    this.time.delayedCall(500, () => {
-                        const opponentUci = this.solutionMoves[this.solutionIndex];
-                        this.chess.makeUciMove(opponentUci);
-                        this.solutionIndex++;
-                        this.clearHighlights();
-                        const fCol = opponentUci.charCodeAt(0) - 97;
-                        const fRow = 8 - parseInt(opponentUci[1]);
-                        const tCol = opponentUci.charCodeAt(2) - 97;
-                        const tRow = 8 - parseInt(opponentUci[3]);
-                        this._setTileOverlay(fRow, fCol, COLORS.LAST_MOVE, 0.35);
-                        this._setTileOverlay(tRow, tCol, COLORS.LAST_MOVE, 0.35);
-                        this.drawPieces();
-                        this._updateUI();
-
-                        if (this.solutionIndex >= this.solutionMoves.length) {
-                            this._onPuzzleSolved();
-                        }
-                    });
+                    this.time.delayedCall(500, () => this._playOpponentResponse());
                 }
             } else {
                 // Falscher Zug
-                this._setTileOverlay(row, col, COLORS.CHECK, 0.5);
+                const vr = this._viewRow(row);
+                const vc = this._viewCol(col);
+                this._setViewOverlay(vr, vc, COLORS.CHECK, 0.5);
                 this.time.delayedCall(500, () => this.clearHighlights());
                 this.selectedTile = null;
                 this.clearMoveIndicators();
@@ -340,6 +358,28 @@ class TrainingScene extends Phaser.Scene {
         }
     }
 
+    _playOpponentResponse() {
+        if (this.solutionIndex >= this.solutionMoves.length) return;
+        const opponentUci = this.solutionMoves[this.solutionIndex];
+        this.chess.makeUciMove(opponentUci);
+        this.solutionIndex++;
+        this.clearHighlights();
+
+        // Gegnerzug hervorheben
+        const fCol = opponentUci.charCodeAt(0) - 97;
+        const fRow = 8 - parseInt(opponentUci[1]);
+        const tCol = opponentUci.charCodeAt(2) - 97;
+        const tRow = 8 - parseInt(opponentUci[3]);
+        this._setBoardOverlay(fRow, fCol, COLORS.LAST_MOVE, 0.35);
+        this._setBoardOverlay(tRow, tCol, COLORS.LAST_MOVE, 0.35);
+        this.drawPieces();
+        this._updateUI();
+
+        if (this.solutionIndex >= this.solutionMoves.length) {
+            this._onPuzzleSolved();
+        }
+    }
+
     _toUci(fromRow, fromCol, toRow, toCol) {
         return String.fromCharCode(97 + fromCol) + (8 - fromRow) +
                String.fromCharCode(97 + toCol) + (8 - toRow);
@@ -348,24 +388,22 @@ class TrainingScene extends Phaser.Scene {
     _onPuzzleSolved() {
         this.puzzleSolved = true;
         this._updateUI();
-
-        // Nächstes Puzzle nach 2s laden
-        this.time.delayedCall(2000, () => {
-            this._fetchPuzzle();
-        });
+        this.time.delayedCall(2000, () => this._fetchPuzzle());
     }
 
-    // ---- Selektion ----
+    // ---- Selektion (Board-Koordinaten) ----
     _selectTile(row, col) {
         this.clearHighlights();
         this.clearMoveIndicators();
         this.selectedTile = { row, col };
-        this._setTileOverlay(row, col, COLORS.SELECTED, 0.45);
+        this._setBoardOverlay(row, col, COLORS.SELECTED, 0.45);
 
         const moves = this.chess.getLegalMoves(row, col);
         for (const move of moves) {
-            const x = BOARD_OFFSET_X + move.col * TILE_SIZE + TILE_SIZE / 2;
-            const y = BOARD_OFFSET_Y + move.row * TILE_SIZE + TILE_SIZE / 2;
+            const vr = this._viewRow(move.row);
+            const vc = this._viewCol(move.col);
+            const x = BOARD_OFFSET_X + vc * TILE_SIZE + TILE_SIZE / 2;
+            const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
             const target = this.chess.getPiece(move.row, move.col);
             let indicator;
             if (target) {
@@ -379,18 +417,26 @@ class TrainingScene extends Phaser.Scene {
     }
 
     // ---- Highlights ----
-    clearHighlights() {
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
-                this._setTileOverlay(r, c, 0x000000, 0);
-            }
+    // Board-Koordinaten -> View-Overlay
+    _setBoardOverlay(boardRow, boardCol, color, alpha) {
+        const vr = this._viewRow(boardRow);
+        const vc = this._viewCol(boardCol);
+        this._setViewOverlay(vr, vc, color, alpha);
+    }
+
+    // View-Koordinaten -> Overlay
+    _setViewOverlay(viewRow, viewCol, color, alpha) {
+        const tile = this.tileGraphics[viewRow] && this.tileGraphics[viewRow][viewCol];
+        if (tile && tile._overlay) {
+            tile._overlay.setFillStyle(color, alpha);
         }
     }
 
-    _setTileOverlay(row, col, color, alpha) {
-        const tile = this.tileGraphics[row] && this.tileGraphics[row][col];
-        if (tile && tile._overlay) {
-            tile._overlay.setFillStyle(color, alpha);
+    clearHighlights() {
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                this._setViewOverlay(r, c, 0x000000, 0);
+            }
         }
     }
 
