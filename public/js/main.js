@@ -39,47 +39,41 @@ function switchMode(mode) {
     document.getElementById('friend-ingame').style.display = 'none';
     document.getElementById('training-controls').style.display = mode === 'train' ? 'flex' : 'none';
 
+    // Board immer sichtbar lassen (Phaser braucht sichtbares Canvas)
+    document.getElementById('status').style.display = mode === 'friend' ? 'none' : '';
+    document.getElementById('settings-row').style.display = mode === 'friend' ? 'none' : 'flex';
+
     stopActiveScene();
     if (mode === 'play') {
-        _showBoard(true);
         setTimeout(() => {
             activeScene = 'GameScene';
             game.scene.start('GameScene');
         }, 50);
     } else if (mode === 'friend') {
-        // Zeige Setup-Panel, Board verstecken
-        _showBoard(false);
         document.getElementById('friend-setup').style.display = 'flex';
     } else {
-        _showBoard(true);
         setTimeout(() => startTrainingFromDropdown(), 50);
     }
 }
 
-function _showBoard(visible) {
-    document.getElementById('phaser-game').style.display = visible ? '' : 'none';
-    document.getElementById('status').style.display = visible ? '' : 'none';
-    document.getElementById('settings-row').style.display = visible ? 'flex' : 'none';
-}
-
 function startFriendGame() {
-    console.log('startFriendGame called');
     document.getElementById('friend-setup').style.display = 'none';
     document.getElementById('friend-ingame').style.display = 'flex';
-    _showBoard(true);
+    document.getElementById('status').style.display = '';
+    document.getElementById('settings-row').style.display = 'flex';
     stopActiveScene();
     setTimeout(() => {
         activeScene = 'FriendScene';
         game.scene.start('FriendScene');
-        console.log('FriendScene started');
     }, 50);
 }
 
 function friendBackToSetup() {
     stopActiveScene();
-    _showBoard(false);
     document.getElementById('friend-ingame').style.display = 'none';
     document.getElementById('friend-setup').style.display = 'flex';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('settings-row').style.display = 'none';
 }
 
 function startTrainingFromDropdown() {
