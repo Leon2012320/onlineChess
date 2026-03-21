@@ -454,7 +454,32 @@
             <button id="btn-new-game" class="ctrl-btn btn-accent">Neues Spiel</button>
         </div>
         <div id="friend-controls" style="display:none;">
-            <button id="btn-new-friend-game" class="ctrl-btn btn-accent">Neues Spiel</button>
+            <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;">
+                <select id="friend-variant" title="Variante">
+                    <option value="standard">Standard</option>
+                    <option value="chess960">Chess960</option>
+                    <option value="antichess">Räuberschach</option>
+                </select>
+                <button id="btn-new-friend-game" class="ctrl-btn btn-accent">Neues Spiel</button>
+            </div>
+            <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+                <select id="friend-handicap-white" title="Handicap Weiß">
+                    <option value="none">Weiß: Alle Figuren</option>
+                    <option value="queen">Weiß: Ohne Dame</option>
+                    <option value="rook">Weiß: Ohne Türme</option>
+                    <option value="bishop">Weiß: Ohne Läufer</option>
+                    <option value="knight">Weiß: Ohne Springer</option>
+                    <option value="rook-knight">Weiß: Ohne Turm+Springer</option>
+                </select>
+                <select id="friend-handicap-black" title="Handicap Schwarz">
+                    <option value="none">Schwarz: Alle Figuren</option>
+                    <option value="queen">Schwarz: Ohne Dame</option>
+                    <option value="rook">Schwarz: Ohne Türme</option>
+                    <option value="bishop">Schwarz: Ohne Läufer</option>
+                    <option value="knight">Schwarz: Ohne Springer</option>
+                    <option value="rook-knight">Schwarz: Ohne Turm+Springer</option>
+                </select>
+            </div>
         </div>
         <div id="training-controls">
             <div class="row">

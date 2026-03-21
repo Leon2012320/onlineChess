@@ -1,6 +1,8 @@
 // ============================================
 // Friend Scene - Spieler vs Spieler (lokal)
 // Brett dreht sich nach jedem Zug
+// Varianten: Standard, Chess960, Räuberschach
+// Handicaps: Ohne Dame/Türme/Läufer/Springer
 // ============================================
 
 class FriendScene extends Phaser.Scene {
@@ -15,13 +17,265 @@ class FriendScene extends Phaser.Scene {
         this.pieceSprites = [];
         this.tileGraphics = [];
         this.lastMove = null;
-        this.flipped = false; // Weiß startet unten
+        this.flipped = false;
+
+        // Variante und Handicaps auslesen
+        const variantEl = document.getElementById('friend-variant');
+        const hWhiteEl = document.getElementById('friend-handicap-white');
+        const hBlackEl = document.getElementById('friend-handicap-black');
+        this.variant = variantEl ? variantEl.value : 'standard';
+        this.handicapWhite = hWhiteEl ? hWhiteEl.value : 'none';
+        this.handicapBlack = hBlackEl ? hBlackEl.value : 'none';
+
+        // Startposition aufbauen
+        this._setupStartPosition();
 
         this.drawBoard();
         this.drawPieces();
         this._setupInput();
         this._bindUIOnce();
         this._updateStatus();
+    }
+
+    // ---- Startposition je nach Variante / Handicap ----
+    _setupStartPosition() {
+        if (this.variant === 'chess960') {
+            this._setupChess960();
+        } else {
+            this.chess.reset();
+        }
+
+        // Handicaps anwenden
+        this._applyHandicap(COLOR.WHITE, this.handicapWhite);
+        this._applyHandicap(COLOR.BLACK, this.handicapBlack);
+    }
+
+    _applyHandicap(color, handicap) {
+        if (handicap === 'none') return;
+        const removeType = {
+            'queen': [PIECE.QUEEN],
+            'rook': [PIECE.ROOK],
+            'bishop': [PIECE.BISHOP],
+            'knight': [PIECE.KNIGHT],
+            'rook-knight': [PIECE.ROOK, PIECE.KNIGHT],
+        }[handicap] || [];
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = this.chess.getPiece(r, c);
+                if (p && p.color === color && removeType.includes(p.type)) {
+                    this.chess.board[r][c] = null;
+                }
+            }
+        }
+    }
+
+    // ---- Chess960 (Fischer Random) ----
+    _setupChess960() {
+        this.chess.reset();
+        const backRank = this._generateChess960BackRank();
+
+        // Weiß (Reihe 7)
+        for (let c = 0; c < 8; c++) {
+            this.chess.board[7][c] = { color: COLOR.WHITE, type: backRank[c] };
+        }
+        // Schwarz (Reihe 0) - gespiegelt
+        for (let c = 0; c < 8; c++) {
+            this.chess.board[0][c] = { color: COLOR.BLACK, type: backRank[c] };
+        }
+
+        // Rochade-Rechte deaktivieren für Chess960 (vereinfacht)
+        this.chess.castlingRights = {
+            white: { kingSide: false, queenSide: false },
+            black: { kingSide: false, queenSide: false },
+        };
+    }
+
+    _generateChess960BackRank() {
+        // Fischer Random: König zwischen den Türmen, Läufer auf verschiedenen Feldern
+        const pieces = new Array(8).fill(null);
+
+        // 1. Läufer auf zufälliges helles Feld (0, 2, 4, 6)
+        const lightSquares = [0, 2, 4, 6];
+        pieces[lightSquares[Math.floor(Math.random() * 4)]] = PIECE.BISHOP;
+
+        // 2. Läufer auf zufälliges dunkles Feld (1, 3, 5, 7)
+        const darkSquares = [1, 3, 5, 7];
+        pieces[darkSquares[Math.floor(Math.random() * 4)]] = PIECE.BISHOP;
+
+        // 3. Dame auf ein freies Feld
+        const empty1 = pieces.map((p, i) => p === null ? i : -1).filter(i => i >= 0);
+        pieces[empty1[Math.floor(Math.random() * empty1.length)]] = PIECE.QUEEN;
+
+        // 4. Springer auf zwei freie Felder
+        const empty2 = pieces.map((p, i) => p === null ? i : -1).filter(i => i >= 0);
+        const knightIdx1 = Math.floor(Math.random() * empty2.length);
+        pieces[empty2[knightIdx1]] = PIECE.KNIGHT;
+        empty2.splice(knightIdx1, 1);
+        const knightIdx2 = Math.floor(Math.random() * empty2.length);
+        pieces[empty2[knightIdx2]] = PIECE.KNIGHT;
+        empty2.splice(knightIdx2, 1);
+
+        // 5. Turm-König-Turm auf die verbleibenden 3 Felder (in Reihenfolge)
+        const remaining = pieces.map((p, i) => p === null ? i : -1).filter(i => i >= 0);
+        // remaining hat genau 3 Einträge, sortiert: Turm, König, Turm
+        pieces[remaining[0]] = PIECE.ROOK;
+        pieces[remaining[1]] = PIECE.KING;
+        pieces[remaining[2]] = PIECE.ROOK;
+
+        return pieces;
+    }
+
+    // ---- Räuberschach: Schlagzwang-Filter ----
+    _getLegalMovesForVariant(row, col) {
+        if (this.variant !== 'antichess') {
+            return this.chess.getLegalMoves(row, col);
+        }
+        // Räuberschach: Alle Züge ohne Schach-Prüfung (König ist nicht besonders)
+        return this._getAntichessMoves(row, col);
+    }
+
+    _getAntichessMoves(row, col) {
+        // Im Räuberschach gibt es kein Schach – alle pseudo-legalen Züge sind legal
+        return this.chess.getPseudoLegalMoves(row, col);
+    }
+
+    _getMovesWithCaptureForcing(color) {
+        // Prüfe ob es irgendwo Schlagzüge gibt
+        const allCaptures = [];
+        const allMoves = [];
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = this.chess.getPiece(r, c);
+                if (p && p.color === color) {
+                    const moves = this._getLegalMovesForVariant(r, c);
+                    for (const m of moves) {
+                        const target = this.chess.getPiece(m.row, m.col);
+                        const isEnPassant = m.enPassant;
+                        if (target || isEnPassant) {
+                            allCaptures.push({ from: { row: r, col: c }, move: m });
+                        }
+                        allMoves.push({ from: { row: r, col: c }, move: m });
+                    }
+                }
+            }
+        }
+
+        return { allCaptures, allMoves, mustCapture: allCaptures.length > 0 };
+    }
+
+    _getFilteredMoves(row, col) {
+        const moves = this._getLegalMovesForVariant(row, col);
+        if (this.variant !== 'antichess') return moves;
+
+        // Schlagzwang: Gibt es Schlagzüge für diese Farbe?
+        const piece = this.chess.getPiece(row, col);
+        if (!piece) return [];
+
+        const { mustCapture } = this._getMovesWithCaptureForcing(piece.color);
+        if (!mustCapture) return moves;
+
+        // Nur Schlagzüge dieser Figur zurückgeben
+        return moves.filter(m => {
+            const target = this.chess.getPiece(m.row, m.col);
+            return target || m.enPassant;
+        });
+    }
+
+    // ---- Räuberschach: Spielende prüfen ----
+    _checkAntichessEnd(moveResult) {
+        if (this.variant !== 'antichess') return;
+
+        // Gewonnen wenn man alle Figuren verloren hat
+        const movedColor = moveResult.piece.color;
+        const opponentColor = movedColor === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
+
+        // Prüfe ob der Spieler der gezogen hat keine Figuren mehr hat
+        if (!this._hasAnyPiece(movedColor)) {
+            document.getElementById('status').textContent =
+                `${movedColor === COLOR.WHITE ? 'Weiß' : 'Schwarz'} hat alle Figuren verloren — Gewonnen!`;
+            this.chess.gameOver = true;
+            return;
+        }
+        // Prüfe ob der Gegner keine Figuren mehr hat
+        if (!this._hasAnyPiece(opponentColor)) {
+            document.getElementById('status').textContent =
+                `${opponentColor === COLOR.WHITE ? 'Weiß' : 'Schwarz'} hat alle Figuren verloren — Gewonnen!`;
+            this.chess.gameOver = true;
+            return;
+        }
+
+        // Prüfe ob der nächste Spieler überhaupt ziehen kann
+        const { allMoves } = this._getMovesWithCaptureForcing(this.chess.currentTurn);
+        if (allMoves.length === 0) {
+            // Keine Züge möglich → Spieler der nicht ziehen kann gewinnt im Räuberschach
+            const stuckColor = this.chess.currentTurn === COLOR.WHITE ? 'Weiß' : 'Schwarz';
+            document.getElementById('status').textContent = `${stuckColor} kann nicht ziehen — ${stuckColor} gewinnt!`;
+            this.chess.gameOver = true;
+        }
+    }
+
+    _hasAnyPiece(color) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = this.chess.getPiece(r, c);
+                if (p && p.color === color) return true;
+            }
+        }
+        return false;
+    }
+
+    // ---- Räuberschach: Zug ausführen (ohne Schach-Prüfung) ----
+    _makeAntichessMove(fromRow, fromCol, toRow, toCol) {
+        const piece = this.chess.getPiece(fromRow, fromCol);
+        if (!piece) return null;
+        if (piece.color !== this.chess.currentTurn) return null;
+
+        const moves = this._getAntichessMoves(fromRow, fromCol);
+        const move = moves.find(m => m.row === toRow && m.col === toCol);
+        if (!move) return null;
+
+        const moveResult = {
+            from: { row: fromRow, col: fromCol },
+            to: { row: toRow, col: toCol },
+            piece: { ...piece },
+            captured: this.chess.board[toRow][toCol] ? { ...this.chess.board[toRow][toCol] } : null,
+            enPassant: move.enPassant || false,
+            promotion: false,
+            check: false,
+            checkmate: false,
+            stalemate: false,
+        };
+
+        this.chess.board[toRow][toCol] = piece;
+        this.chess.board[fromRow][fromCol] = null;
+
+        // En passant
+        if (move.enPassant) {
+            moveResult.captured = { ...this.chess.board[fromRow][toCol] };
+            this.chess.board[fromRow][toCol] = null;
+        }
+
+        // Bauernumwandlung → im Räuberschach wird Dame gewählt
+        const promotionRow = piece.color === COLOR.WHITE ? 0 : 7;
+        if (piece.type === PIECE.PAWN && toRow === promotionRow) {
+            this.chess.board[toRow][toCol] = { color: piece.color, type: PIECE.QUEEN };
+            moveResult.promotion = true;
+        }
+
+        // En passant Ziel
+        if (piece.type === PIECE.PAWN && Math.abs(toRow - fromRow) === 2) {
+            this.chess.enPassantTarget = { row: (fromRow + toRow) / 2, col: fromCol };
+        } else {
+            this.chess.enPassantTarget = null;
+        }
+
+        // Zug wechseln
+        this.chess.currentTurn = this.chess.currentTurn === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
+        this.chess.moveHistory.push(moveResult);
+
+        return moveResult;
     }
 
     // --- Koordinaten-Konvertierung ---
@@ -163,20 +417,38 @@ class FriendScene extends Phaser.Scene {
 
         if (this.selectedTile) {
             const from = this.selectedTile;
-            const moveResult = this.chess.makeMove(from.row, from.col, row, col);
 
-            if (moveResult) {
-                this.lastMove = moveResult;
-                this.selectedTile = null;
-                this.clearMoveIndicators();
-                this.clearHighlights();
-                this.highlightLastMove();
-                this.drawPieces();
-                this._updateStatus(moveResult);
+            // Prüfe ob der Zug zu den gefilterten Zügen gehört
+            const filteredMoves = this._getFilteredMoves(from.row, from.col);
+            const isAllowed = filteredMoves.some(m => m.row === row && m.col === col);
 
-                // Brett drehen nach dem Zug (wenn Spiel nicht vorbei)
-                if (!this.chess.gameOver) {
-                    this.time.delayedCall(600, () => this._flipBoard());
+            if (isAllowed) {
+                // Im Räuberschach: Zug direkt auf dem Board ausführen (ohne Schach-Prüfung)
+                let moveResult;
+                if (this.variant === 'antichess') {
+                    moveResult = this._makeAntichessMove(from.row, from.col, row, col);
+                } else {
+                    moveResult = this.chess.makeMove(from.row, from.col, row, col);
+                }
+
+                if (moveResult) {
+                    this.lastMove = moveResult;
+                    this.selectedTile = null;
+                    this.clearMoveIndicators();
+                    this.clearHighlights();
+                    this.highlightLastMove();
+                    this.drawPieces();
+
+                    if (this.variant === 'antichess') {
+                        this._checkAntichessEnd(moveResult);
+                        this._updateStatus(moveResult);
+                    } else {
+                        this._updateStatus(moveResult);
+                    }
+
+                    if (!this.chess.gameOver) {
+                        this.time.delayedCall(600, () => this._flipBoard());
+                    }
                 }
             } else {
                 const piece = this.chess.getPiece(row, col);
@@ -214,7 +486,15 @@ class FriendScene extends Phaser.Scene {
         this.selectedTile = { row, col };
         this._setTileOverlay(row, col, COLORS.SELECTED, 0.45);
 
-        const moves = this.chess.getLegalMoves(row, col);
+        const moves = this._getFilteredMoves(row, col);
+
+        // Im Räuberschach: Figur ohne Züge nicht auswählbar bei Schlagzwang
+        if (moves.length === 0) {
+            this.selectedTile = null;
+            this.clearHighlights();
+            return;
+        }
+
         for (const move of moves) {
             const vr = this._viewRow(move.row);
             const vc = this._viewCol(move.col);
@@ -222,7 +502,7 @@ class FriendScene extends Phaser.Scene {
             const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
             const target = this.chess.getPiece(move.row, move.col);
             let indicator;
-            if (target) {
+            if (target || move.enPassant) {
                 indicator = this.add.circle(x, y, TILE_SIZE / 2 - 4);
                 indicator.setStrokeStyle(3, COLORS.HIGHLIGHT, 0.8);
             } else {
@@ -266,25 +546,38 @@ class FriendScene extends Phaser.Scene {
     // ---- Status ----
     _updateStatus(moveResult) {
         const statusEl = document.getElementById('status');
+
+        // Wenn gameOver bereits durch Antichess gesetzt
+        if (this.chess.gameOver && this.variant === 'antichess') return;
+
         const turnName = this.chess.currentTurn === COLOR.WHITE ? 'Weiß' : 'Schwarz';
+        const variantLabel = this.variant === 'chess960' ? ' (960)' :
+                             this.variant === 'antichess' ? ' (Räuber)' : '';
 
         if (!moveResult) {
-            statusEl.textContent = `${turnName} ist am Zug`;
+            statusEl.textContent = `${turnName} ist am Zug${variantLabel}`;
             return;
         }
+
+        if (this.variant === 'antichess') {
+            // Im Räuberschach kein Schachmatt/Patt Standard
+            statusEl.textContent = `${turnName} ist am Zug (Räuber)`;
+            return;
+        }
+
         if (moveResult.checkmate) {
             const winner = moveResult.piece.color === COLOR.WHITE ? 'Weiß' : 'Schwarz';
-            statusEl.textContent = `Schachmatt! ${winner} hat gewonnen!`;
+            statusEl.textContent = `Schachmatt! ${winner} hat gewonnen!${variantLabel}`;
             const king = this.chess.findKing(this.chess.currentTurn);
             if (king) this._setTileOverlay(king.row, king.col, COLORS.CHECK, 0.5);
         } else if (moveResult.stalemate) {
-            statusEl.textContent = 'Patt! Unentschieden!';
+            statusEl.textContent = `Patt! Unentschieden!${variantLabel}`;
         } else if (moveResult.check) {
-            statusEl.textContent = `${turnName} ist im Schach!`;
+            statusEl.textContent = `${turnName} ist im Schach!${variantLabel}`;
             const king = this.chess.findKing(this.chess.currentTurn);
             if (king) this._setTileOverlay(king.row, king.col, COLORS.CHECK, 0.5);
         } else {
-            statusEl.textContent = `${turnName} ist am Zug`;
+            statusEl.textContent = `${turnName} ist am Zug${variantLabel}`;
         }
     }
 }
