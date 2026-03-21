@@ -96,6 +96,7 @@
             transition: all 0.2s ease;
             outline: none;
             -webkit-appearance: none;
+            appearance: none;
         }
         select:hover, .ctrl-btn:hover {
             background: rgba(255,255,255,0.1);
@@ -182,6 +183,24 @@
             font-weight: 500;
         }
 
+        /* --- Settings Row --- */
+        #settings-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        #settings-row label {
+            font-size: 0.82rem;
+            color: #8a8aaf;
+            font-weight: 500;
+        }
+        #settings-row select {
+            padding: 6px 12px;
+            font-size: 0.82rem;
+        }
+
         /* --- Phaser Canvas --- */
         #phaser-game {
             border-radius: 12px;
@@ -230,6 +249,20 @@
             <div id="puzzle-title"></div>
             <div id="puzzle-hint"></div>
             <div id="puzzle-progress"></div>
+        </div>
+        <div id="settings-row">
+            <label for="piece-style">Figuren:</label>
+            <select id="piece-style" title="Figurenstil">
+                <option value="wood">Holz</option>
+                <option value="cburnett" selected>Cburnett</option>
+                <option value="merida">Merida</option>
+                <option value="alpha">Alpha</option>
+                <option value="staunty">Staunty</option>
+                <option value="california">California</option>
+                <option value="maestro">Maestro</option>
+                <option value="kosal">Kosal</option>
+                <option value="letter">Buchstaben</option>
+            </select>
         </div>
         <div id="status">Du bist am Zug</div>
         <div id="phaser-game"></div>

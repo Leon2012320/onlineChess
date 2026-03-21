@@ -164,4 +164,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ts && ts.scene.isActive()) ts._fetchPuzzle();
         }
     });
+
+    // Figurenstil wechseln
+    const pieceStyleSelect = document.getElementById('piece-style');
+    if (pieceStyleSelect) {
+        // Gespeicherten Stil laden
+        const saved = localStorage.getItem('chess_piece_style');
+        if (saved) {
+            pieceStyleSelect.value = saved;
+            currentPieceStyle = saved;
+        }
+
+        pieceStyleSelect.addEventListener('change', () => {
+            const newStyle = pieceStyleSelect.value;
+            localStorage.setItem('chess_piece_style', newStyle);
+            BootScene.changePieceStyle(game, newStyle);
+        });
+    }
 });
