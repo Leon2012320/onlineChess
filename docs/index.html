@@ -263,6 +263,61 @@
             font-weight: 500;
         }
 
+        /* --- Friend Setup Panel --- */
+        #friend-setup {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            width: 100%;
+            max-width: 420px;
+        }
+        #friend-setup .setup-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+        #friend-setup .setup-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+        #friend-setup .setup-group-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #8a8aaf;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+        #friend-setup select {
+            width: 100%;
+        }
+        #friend-setup .setup-row {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+        #friend-setup .setup-row select {
+            flex: 1;
+        }
+        #btn-start-friend {
+            margin-top: 6px;
+            padding: 13px 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        #friend-ingame {
+            display: none;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* --- Settings Row --- */
         #settings-row {
             display: flex;
@@ -453,33 +508,42 @@
             </select>
             <button id="btn-new-game" class="ctrl-btn btn-accent">Neues Spiel</button>
         </div>
-        <div id="friend-controls" style="display:none;">
-            <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;">
+        <div id="friend-setup">
+            <div class="setup-title">♞ Gegen Freund</div>
+            <div class="setup-group">
+                <span class="setup-group-label">Variante</span>
                 <select id="friend-variant" title="Variante">
-                    <option value="standard">Standard</option>
-                    <option value="chess960">Chess960</option>
-                    <option value="antichess">Räuberschach</option>
-                </select>
-                <button id="btn-new-friend-game" class="ctrl-btn btn-accent">Neues Spiel</button>
-            </div>
-            <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:4px;">
-                <select id="friend-handicap-white" title="Handicap Weiß">
-                    <option value="none">Weiß: Alle Figuren</option>
-                    <option value="queen">Weiß: Ohne Dame</option>
-                    <option value="rook">Weiß: Ohne Türme</option>
-                    <option value="bishop">Weiß: Ohne Läufer</option>
-                    <option value="knight">Weiß: Ohne Springer</option>
-                    <option value="rook-knight">Weiß: Ohne Turm+Springer</option>
-                </select>
-                <select id="friend-handicap-black" title="Handicap Schwarz">
-                    <option value="none">Schwarz: Alle Figuren</option>
-                    <option value="queen">Schwarz: Ohne Dame</option>
-                    <option value="rook">Schwarz: Ohne Türme</option>
-                    <option value="bishop">Schwarz: Ohne Läufer</option>
-                    <option value="knight">Schwarz: Ohne Springer</option>
-                    <option value="rook-knight">Schwarz: Ohne Turm+Springer</option>
+                    <option value="standard">♚ Standard</option>
+                    <option value="chess960">🎲 Chess960</option>
+                    <option value="antichess">⚔️ Räuberschach</option>
                 </select>
             </div>
+            <div class="setup-group">
+                <span class="setup-group-label">Handicap</span>
+                <div class="setup-row">
+                    <select id="friend-handicap-white" title="Handicap Weiß">
+                        <option value="none">♔ Weiß: Alle Figuren</option>
+                        <option value="queen">Weiß: Ohne Dame</option>
+                        <option value="rook">Weiß: Ohne Türme</option>
+                        <option value="bishop">Weiß: Ohne Läufer</option>
+                        <option value="knight">Weiß: Ohne Springer</option>
+                        <option value="rook-knight">Weiß: Ohne Turm+Springer</option>
+                    </select>
+                    <select id="friend-handicap-black" title="Handicap Schwarz">
+                        <option value="none">♚ Schwarz: Alle Figuren</option>
+                        <option value="queen">Schwarz: Ohne Dame</option>
+                        <option value="rook">Schwarz: Ohne Türme</option>
+                        <option value="bishop">Schwarz: Ohne Läufer</option>
+                        <option value="knight">Schwarz: Ohne Springer</option>
+                        <option value="rook-knight">Schwarz: Ohne Turm+Springer</option>
+                    </select>
+                </div>
+            </div>
+            <button id="btn-start-friend" class="ctrl-btn btn-accent">▶ Spiel starten</button>
+        </div>
+        <div id="friend-ingame">
+            <button id="btn-new-friend-game" class="ctrl-btn">Neue Einstellungen</button>
+            <button id="btn-restart-friend" class="ctrl-btn btn-accent">↻ Neustart</button>
         </div>
         <div id="training-controls">
             <div class="row">

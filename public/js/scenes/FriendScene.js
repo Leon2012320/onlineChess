@@ -392,7 +392,15 @@ class FriendScene extends Phaser.Scene {
 
         const getScene = () => this.scene.manager.getScene('FriendScene');
 
+        document.getElementById('btn-start-friend').addEventListener('click', () => {
+            startFriendGame();
+        });
+
         document.getElementById('btn-new-friend-game').addEventListener('click', () => {
+            friendBackToSetup();
+        });
+
+        document.getElementById('btn-restart-friend').addEventListener('click', () => {
             const s = getScene();
             if (s && s.scene.isActive()) s.scene.restart();
         });

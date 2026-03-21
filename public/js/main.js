@@ -35,23 +35,49 @@ function switchMode(mode) {
     document.getElementById('btn-mode-friend').classList.toggle('active', mode === 'friend');
     document.getElementById('btn-mode-train').classList.toggle('active', mode === 'train');
     document.getElementById('controls').style.display = mode === 'play' ? 'flex' : 'none';
-    document.getElementById('friend-controls').style.display = mode === 'friend' ? 'flex' : 'none';
+    document.getElementById('friend-setup').style.display = 'none';
+    document.getElementById('friend-ingame').style.display = 'none';
     document.getElementById('training-controls').style.display = mode === 'train' ? 'flex' : 'none';
 
     stopActiveScene();
     if (mode === 'play') {
+        _showBoard(true);
         setTimeout(() => {
             activeScene = 'GameScene';
             game.scene.start('GameScene');
         }, 50);
     } else if (mode === 'friend') {
-        setTimeout(() => {
-            activeScene = 'FriendScene';
-            game.scene.start('FriendScene');
-        }, 50);
+        // Zeige Setup-Panel, Board verstecken
+        _showBoard(false);
+        document.getElementById('friend-setup').style.display = 'flex';
     } else {
+        _showBoard(true);
         setTimeout(() => startTrainingFromDropdown(), 50);
     }
+}
+
+function _showBoard(visible) {
+    document.getElementById('phaser-game').style.display = visible ? '' : 'none';
+    document.getElementById('status').style.display = visible ? '' : 'none';
+    document.getElementById('settings-row').style.display = visible ? 'flex' : 'none';
+}
+
+function startFriendGame() {
+    document.getElementById('friend-setup').style.display = 'none';
+    document.getElementById('friend-ingame').style.display = 'flex';
+    _showBoard(true);
+    stopActiveScene();
+    setTimeout(() => {
+        activeScene = 'FriendScene';
+        game.scene.start('FriendScene');
+    }, 50);
+}
+
+function friendBackToSetup() {
+    stopActiveScene();
+    _showBoard(false);
+    document.getElementById('friend-ingame').style.display = 'none';
+    document.getElementById('friend-setup').style.display = 'flex';
 }
 
 function startTrainingFromDropdown() {
