@@ -434,4 +434,71 @@ class ChessLogic {
         this.castlingRights = JSON.parse(JSON.stringify(state.castlingRights));
         this.enPassantTarget = state.enPassantTarget ? { ...state.enPassantTarget } : null;
     }
+
+    // FEN-String laden
+    loadFen(fen) {
+        const parts = fen.split(' ');
+        const rows = parts[0].split('/');
+        this.board = [];
+        const fenMap = {
+            'k': { color: COLOR.BLACK, type: PIECE.KING },
+            'q': { color: COLOR.BLACK, type: PIECE.QUEEN },
+            'r': { color: COLOR.BLACK, type: PIECE.ROOK },
+            'b': { color: COLOR.BLACK, type: PIECE.BISHOP },
+            'n': { color: COLOR.BLACK, type: PIECE.KNIGHT },
+            'p': { color: COLOR.BLACK, type: PIECE.PAWN },
+            'K': { color: COLOR.WHITE, type: PIECE.KING },
+            'Q': { color: COLOR.WHITE, type: PIECE.QUEEN },
+            'R': { color: COLOR.WHITE, type: PIECE.ROOK },
+            'B': { color: COLOR.WHITE, type: PIECE.BISHOP },
+            'N': { color: COLOR.WHITE, type: PIECE.KNIGHT },
+            'P': { color: COLOR.WHITE, type: PIECE.PAWN },
+        };
+        for (let r = 0; r < 8; r++) {
+            this.board[r] = [];
+            let col = 0;
+            for (const ch of rows[r]) {
+                if (ch >= '1' && ch <= '8') {
+                    for (let i = 0; i < parseInt(ch); i++) {
+                        this.board[r][col++] = null;
+                    }
+                } else if (fenMap[ch]) {
+                    this.board[r][col++] = { ...fenMap[ch] };
+                }
+            }
+        }
+        this.currentTurn = (parts[1] || 'w') === 'w' ? COLOR.WHITE : COLOR.BLACK;
+        // Rochade
+        const castling = parts[2] || '-';
+        this.castlingRights = {
+            white: { kingSide: castling.includes('K'), queenSide: castling.includes('Q') },
+            black: { kingSide: castling.includes('k'), queenSide: castling.includes('q') },
+        };
+        // En passant
+        const ep = parts[3] || '-';
+        if (ep !== '-') {
+            const epCol = ep.charCodeAt(0) - 97;
+            const epRow = 8 - parseInt(ep[1]);
+            this.enPassantTarget = { row: epRow, col: epCol };
+        } else {
+            this.enPassantTarget = null;
+        }
+        this.gameOver = false;
+        this.moveHistory = [];
+    }
+
+    // UCI-Zug ausführen (z.B. "e2e4", "e7e8q")
+    makeUciMove(uci) {
+        const fromCol = uci.charCodeAt(0) - 97;
+        const fromRow = 8 - parseInt(uci[1]);
+        const toCol = uci.charCodeAt(2) - 97;
+        const toRow = 8 - parseInt(uci[3]);
+        const result = this.makeMove(fromRow, fromCol, toRow, toCol);
+        // Bauernumwandlung ggf. erzwingen
+        if (uci.length === 5 && result) {
+            const promoMap = { q: PIECE.QUEEN, r: PIECE.ROOK, b: PIECE.BISHOP, n: PIECE.KNIGHT };
+            this.board[toRow][toCol] = { color: result.piece.color, type: promoMap[uci[4]] || PIECE.QUEEN };
+        }
+        return result;
+    }
 }

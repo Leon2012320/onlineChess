@@ -159,12 +159,12 @@
         <div id="training-controls">
             <div class="row">
                 <select id="puzzle-category"></select>
-                <button id="btn-prev-puzzle">← Zurück</button>
-                <button id="btn-next-puzzle">Weiter →</button>
+                <button id="btn-reset-puzzle">↻ Neustart</button>
+                <button id="btn-next-puzzle">Nächstes →</button>
             </div>
             <div class="row">
                 <button id="btn-hint">💡 Hinweis</button>
-                <button id="btn-reset-puzzle">↻ Neustart</button>
+                <button id="btn-prev-puzzle" style="display:none;"></button>
             </div>
             <div id="puzzle-title"></div>
             <div id="puzzle-hint"></div>
@@ -181,6 +181,7 @@
     <script src="js/puzzleDatabase.js"></script>
     <script src="js/scenes/BootScene.js"></script>
     <script src="js/scenes/GameScene.js"></script>
+    <script src="js/scenes/ExerciseScene.js"></script>
     <script src="js/scenes/TrainingScene.js"></script>
     <script src="js/main.js"></script>
 </body>

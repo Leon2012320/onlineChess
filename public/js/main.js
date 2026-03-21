@@ -8,7 +8,7 @@ const config = {
     height: BOARD_SIZE * TILE_SIZE + BOARD_OFFSET_Y * 2 + 20,
     parent: 'phaser-game',
     backgroundColor: '#16213e',
-    scene: [BootScene, GameScene, TrainingScene],
+    scene: [BootScene, GameScene, ExerciseScene, TrainingScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -19,7 +19,13 @@ const game = new Phaser.Game(config);
 
 // ---- Modus-Umschaltung ----
 let currentMode = 'play';
-let trainingStarted = false;
+let activeScene = 'GameScene';
+
+function stopActiveScene() {
+    if (game.scene.isActive(activeScene)) {
+        game.scene.stop(activeScene);
+    }
+}
 
 function switchMode(mode) {
     if (currentMode === mode) return;
@@ -31,97 +37,131 @@ function switchMode(mode) {
     document.getElementById('training-controls').style.display = mode === 'train' ? 'flex' : 'none';
 
     if (mode === 'play') {
-        if (trainingStarted) {
-            game.scene.stop('TrainingScene');
-        }
-        // Kurze Verzögerung damit Phaser die alte Szene verarbeiten kann
-        setTimeout(() => { game.scene.start('GameScene'); }, 50);
-    } else {
-        const catSelect = document.getElementById('puzzle-category');
-        const catValue = catSelect ? catSelect.value : PUZZLE_CATEGORIES[0].id;
-        game.scene.stop('GameScene');
-        trainingStarted = true;
+        stopActiveScene();
         setTimeout(() => {
-            game.scene.start('TrainingScene', {
-                category: catValue,
-                puzzleIndex: 0,
-            });
+            activeScene = 'GameScene';
+            game.scene.start('GameScene');
         }, 50);
+    } else {
+        stopActiveScene();
+        setTimeout(() => startTrainingFromDropdown(), 50);
     }
 }
 
-// ---- Kategorien-Dropdown füllen & Event-Listener ----
+function startTrainingFromDropdown() {
+    const catSelect = document.getElementById('puzzle-category');
+    const catValue = catSelect ? catSelect.value : '';
+
+    // Übung oder Puzzle?
+    const exerciseCat = EXERCISE_CATEGORIES.find(c => c.id === catValue);
+    const puzzleCat = PUZZLE_CATEGORIES.find(c => c.id === catValue);
+
+    if (exerciseCat) {
+        activeScene = 'ExerciseScene';
+        game.scene.start('ExerciseScene', { category: catValue });
+    } else if (puzzleCat) {
+        activeScene = 'TrainingScene';
+        game.scene.start('TrainingScene', { category: catValue, angle: puzzleCat.angle });
+    } else {
+        // Fallback
+        activeScene = 'ExerciseScene';
+        game.scene.start('ExerciseScene', { category: EXERCISE_CATEGORIES[0].id });
+    }
+}
+
+// ---- Kategorien-Dropdown & Event-Listener ----
 document.addEventListener('DOMContentLoaded', () => {
     // Mode-Switch Buttons
     document.getElementById('btn-mode-play').addEventListener('click', () => switchMode('play'));
     document.getElementById('btn-mode-train').addEventListener('click', () => switchMode('train'));
 
     const catSelect = document.getElementById('puzzle-category');
-    if (catSelect && typeof PUZZLE_CATEGORIES !== 'undefined') {
-        // Übungen (Lern-Übungen)
+    if (catSelect) {
+        // Übungen
         const uebungenGroup = document.createElement('optgroup');
         uebungenGroup.label = '\uD83D\uDCD6 Übungen';
+        EXERCISE_CATEGORIES.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = cat.icon + ' ' + cat.name;
+            uebungenGroup.appendChild(opt);
+        });
+        catSelect.appendChild(uebungenGroup);
+
+        // Puzzles
         const puzzleGroup = document.createElement('optgroup');
         puzzleGroup.label = '\uD83E\uDDE9 Puzzles';
-
         PUZZLE_CATEGORIES.forEach(cat => {
             const opt = document.createElement('option');
             opt.value = cat.id;
             opt.textContent = cat.icon + ' ' + cat.name;
-            if (cat.type === 'uebung') {
-                uebungenGroup.appendChild(opt);
-            } else {
-                puzzleGroup.appendChild(opt);
-            }
+            puzzleGroup.appendChild(opt);
         });
-
-        catSelect.appendChild(uebungenGroup);
         catSelect.appendChild(puzzleGroup);
 
         catSelect.addEventListener('change', () => {
             if (currentMode === 'train') {
-                game.scene.stop('TrainingScene');
-                setTimeout(() => {
-                    game.scene.start('TrainingScene', {
-                        category: catSelect.value,
-                        puzzleIndex: 0,
-                    });
-                }, 50);
+                stopActiveScene();
+                setTimeout(() => startTrainingFromDropdown(), 50);
             }
         });
     }
 
-    // Puzzle-Navigation
-    document.getElementById('btn-prev-puzzle').addEventListener('click', () => {
+    // Navigation (nur für Übungen - Puzzles laden automatisch)
+    document.getElementById('btn-next-puzzle').addEventListener('click', () => {
         if (currentMode !== 'train') return;
-        const ts = game.scene.getScene('TrainingScene');
-        if (ts && ts.scene.isActive()) {
-            ts.currentPuzzleIndex--;
-            ts._loadPuzzle();
+        if (activeScene === 'TrainingScene') {
+            const ts = game.scene.getScene('TrainingScene');
+            if (ts && ts.scene.isActive()) {
+                ts._fetchPuzzle();
+            }
+        } else if (activeScene === 'ExerciseScene') {
+            const es = game.scene.getScene('ExerciseScene');
+            if (es && es.scene.isActive()) {
+                es._loadExercise();
+            }
         }
     });
 
-    document.getElementById('btn-next-puzzle').addEventListener('click', () => {
+    document.getElementById('btn-prev-puzzle').addEventListener('click', () => {
+        // Für Puzzles: neues Puzzle laden (kein "zurück" bei API)
         if (currentMode !== 'train') return;
-        const ts = game.scene.getScene('TrainingScene');
-        if (ts && ts.scene.isActive()) {
-            ts.currentPuzzleIndex++;
-            ts._loadPuzzle();
+        if (activeScene === 'TrainingScene') {
+            const ts = game.scene.getScene('TrainingScene');
+            if (ts && ts.scene.isActive()) {
+                ts._fetchPuzzle();
+            }
+        } else if (activeScene === 'ExerciseScene') {
+            const es = game.scene.getScene('ExerciseScene');
+            if (es && es.scene.isActive()) {
+                es._loadExercise();
+            }
         }
     });
 
     document.getElementById('btn-hint').addEventListener('click', () => {
-        const hintEl = document.getElementById('puzzle-hint');
-        if (hintEl && hintEl.dataset.hint) {
-            hintEl.textContent = hintEl.dataset.hint;
+        if (currentMode !== 'train') return;
+        if (activeScene === 'TrainingScene') {
+            const ts = game.scene.getScene('TrainingScene');
+            if (ts && ts.scene.isActive() && ts.solutionMoves && ts.solutionIndex < ts.solutionMoves.length) {
+                // Zeige den nächsten erwarteten Zug als Hinweis
+                const uci = ts.solutionMoves[ts.solutionIndex];
+                const from = uci.substring(0, 2);
+                const to = uci.substring(2, 4);
+                const hintEl = document.getElementById('puzzle-hint');
+                if (hintEl) hintEl.textContent = `Hinweis: ${from} → ${to}`;
+            }
         }
     });
 
     document.getElementById('btn-reset-puzzle').addEventListener('click', () => {
         if (currentMode !== 'train') return;
-        const ts = game.scene.getScene('TrainingScene');
-        if (ts && ts.scene.isActive()) {
-            ts._loadPuzzle();
+        if (activeScene === 'ExerciseScene') {
+            const es = game.scene.getScene('ExerciseScene');
+            if (es && es.scene.isActive()) es._loadExercise();
+        } else if (activeScene === 'TrainingScene') {
+            const ts = game.scene.getScene('TrainingScene');
+            if (ts && ts.scene.isActive()) ts._fetchPuzzle();
         }
     });
 });
