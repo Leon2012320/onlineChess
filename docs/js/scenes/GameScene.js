@@ -5,7 +5,6 @@
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
-        this._uiBound = false;
     }
 
     create() {
@@ -28,7 +27,7 @@ class GameScene extends Phaser.Scene {
         this.drawBoard();
         this.drawPieces();
         this.setupInput();
-        this.setupUI();
+        this._bindUIOnce();
         this.updateStatus();
 
         // Wenn Schwarz, Engine macht den ersten Zug
@@ -159,25 +158,29 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    // ---- UI Buttons (nur einmal binden) ----
-    setupUI() {
-        if (this._uiBound) return;
-        this._uiBound = true;
+    // ---- UI Buttons (einmal binden, immer aktuelle Scene nutzen) ----
+    _bindUIOnce() {
+        if (GameScene._uiBound) return;
+        GameScene._uiBound = true;
+
+        const getScene = () => this.scene.manager.getScene('GameScene');
 
         document.getElementById('btn-new-game').addEventListener('click', () => {
-            this.newGame();
+            const s = getScene();
+            if (s && s.scene.isActive()) s.scene.restart();
         });
 
         document.getElementById('difficulty').addEventListener('change', (e) => {
-            const level = parseInt(e.target.value, 10);
-            this.engine.setDifficulty(level);
+            const s = getScene();
+            if (s && s.engine) {
+                const level = parseInt(e.target.value, 10);
+                s.engine.setDifficulty(level);
+            }
         });
 
-        document.getElementById('play-as').addEventListener('change', (e) => {
-            this.playerColor = e.target.value;
-            this.engineColor = this.playerColor === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
-            this.flipped = this.playerColor === COLOR.BLACK;
-            this.scene.restart();
+        document.getElementById('play-as').addEventListener('change', () => {
+            const s = getScene();
+            if (s && s.scene.isActive()) s.scene.restart();
         });
     }
 
