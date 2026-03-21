@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schach gegen Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #e0e0e0;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        h1 {
+            font-size: 1.6rem;
+            color: #e0e0e0;
+            letter-spacing: 1px;
+        }
+        #controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #controls select, #controls button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #controls select {
+            background: #16213e;
+            color: #e0e0e0;
+            border: 1px solid #334;
+        }
+        #controls button {
+            background: #0f3460;
+            color: #e0e0e0;
+            transition: background 0.2s;
+        }
+        #controls button:hover {
+            background: #1a5276;
+        }
+        #status {
+            font-size: 1.1rem;
+            padding: 8px 16px;
+            background: #16213e;
+            border-radius: 8px;
+            min-width: 300px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>&#9816; Schach vs Engine</h1>
+        <div id="controls">
+            <select id="play-as" title="Spielfarbe">
+                <option value="white">Spielen als Weiß</option>
+                <option value="black">Spielen als Schwarz</option>
+            </select>
+            <select id="difficulty" title="Schwierigkeit">
+                <option value="1">Anfänger</option>
+                <option value="2" selected>Mittel</option>
+                <option value="3">Stark</option>
+            </select>
+            <button id="btn-new-game">Neues Spiel</button>
+        </div>
+        <div id="status">Du bist am Zug</div>
+        <div id="phaser-game"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="js/constants.js"></script>
+    <script src="js/chessLogic.js"></script>
+    <script src="js/chessEngine.js"></script>
+    <script src="js/scenes/BootScene.js"></script>
+    <script src="js/scenes/GameScene.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+</body>
+</html>
