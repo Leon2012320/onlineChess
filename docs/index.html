@@ -29,23 +29,24 @@
             content: '';
             position: fixed;
             border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0.15;
+            filter: blur(80px);
+            opacity: 0.12;
             z-index: -1;
             pointer-events: none;
-            animation: floatOrb 12s ease-in-out infinite alternate;
+            will-change: transform;
+            animation: floatOrb 20s ease-in-out infinite alternate;
         }
         body::before {
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, #3a7bd5, #6c5ce7);
+            width: 400px; height: 400px;
+            background: #3a5fd5;
             top: -120px; left: -120px;
         }
         body::after {
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, #e17055, #d4a853);
+            width: 350px; height: 350px;
+            background: #d4a853;
             bottom: -80px; right: -100px;
-            animation-delay: -6s;
-            animation-duration: 15s;
+            animation-delay: -8s;
+            animation-duration: 24s;
         }
         @keyframes floatOrb {
             0%   { transform: translate(0, 0) scale(1); }
@@ -56,15 +57,16 @@
         /* Third floating orb via extra element */
         .orb-extra {
             position: fixed;
-            width: 300px; height: 300px;
+            width: 280px; height: 280px;
             border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.1;
+            filter: blur(80px);
+            opacity: 0.08;
             z-index: -1;
             pointer-events: none;
-            background: radial-gradient(circle, #00cec9, #6c5ce7);
+            will-change: transform;
+            background: #5c6ce7;
             top: 50%; left: 60%;
-            animation: floatOrb 18s ease-in-out infinite alternate-reverse;
+            animation: floatOrb 25s ease-in-out infinite alternate-reverse;
         }
 
         /* Animated gradient border wrapper */
@@ -72,23 +74,15 @@
             position: relative;
             padding: 2px;
             border-radius: 22px;
-            background: conic-gradient(from var(--border-angle, 0deg),
-                #3a7bd5, #6c5ce7, #e17055, #d4a853, #00cec9, #3a7bd5);
-            animation: rotateBorder 6s linear infinite;
-        }
-        @property --border-angle {
-            syntax: '<angle>';
-            initial-value: 0deg;
-            inherits: false;
+            background: linear-gradient(var(--border-angle, 135deg),
+                #3a7bd5, #6c5ce7, #e17055, #d4a853, #3a7bd5);
+            background-size: 300% 300%;
+            animation: rotateBorder 8s ease infinite;
         }
         @keyframes rotateBorder {
-            to { --border-angle: 360deg; }
-        }
-        /* Fallback for browsers not supporting @property */
-        @supports not (background: conic-gradient(from 0deg, red, blue)) {
-            .container-border {
-                background: linear-gradient(135deg, #3a7bd5, #6c5ce7, #e17055);
-            }
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         #game-container {
@@ -99,7 +93,7 @@
             padding: 28px 24px 20px;
             background: rgba(12, 12, 30, 0.85);
             border-radius: 20px;
-            backdrop-filter: blur(24px) saturate(1.4);
+            backdrop-filter: blur(12px);
             box-shadow:
                 0 20px 60px rgba(0,0,0,0.6),
                 0 0 0 1px rgba(255,255,255,0.04) inset,
@@ -219,7 +213,7 @@
             outline: none;
             -webkit-appearance: none;
             appearance: none;
-            backdrop-filter: blur(8px);
+            /* lightweight - no backdrop-filter */
         }
         select:hover, .ctrl-btn:hover {
             background: rgba(255,255,255,0.08);
@@ -500,6 +494,7 @@
             position: absolute;
             font-size: 2rem;
             opacity: 0.04;
+            will-change: transform;
             animation: floatPiece linear infinite;
             color: #c0c0ff;
         }
@@ -748,14 +743,14 @@
         const container = document.getElementById('chess-float-bg');
         if (!container) return;
         const pieces = ['♔','♕','♖','♗','♘','♙','♚','♛','♜','♝','♞','♟'];
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 6; i++) {
             const el = document.createElement('span');
             el.className = 'chess-float-piece';
-            el.textContent = pieces[i % pieces.length];
+            el.textContent = pieces[i * 2 % pieces.length];
             el.style.left = (Math.random() * 100) + '%';
-            el.style.fontSize = (Math.random() * 1.5 + 1.2) + 'rem';
-            el.style.animationDuration = (Math.random() * 20 + 25) + 's';
-            el.style.animationDelay = (Math.random() * 20) + 's';
+            el.style.fontSize = (Math.random() * 1.2 + 1.2) + 'rem';
+            el.style.animationDuration = (Math.random() * 20 + 30) + 's';
+            el.style.animationDelay = (Math.random() * 25) + 's';
             el.style.opacity = (Math.random() * 0.03 + 0.02);
             container.appendChild(el);
         }
@@ -770,43 +765,31 @@
         function resize() { w = c.width = window.innerWidth; h = c.height = window.innerHeight; }
         window.addEventListener('resize', resize);
         resize();
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 25; i++) {
             particles.push({
                 x: Math.random() * w, y: Math.random() * h,
                 r: Math.random() * 1.8 + 0.4,
-                dx: (Math.random() - 0.5) * 0.25,
-                dy: (Math.random() - 0.5) * 0.25,
-                o: Math.random() * 0.2 + 0.04,
+                dx: (Math.random() - 0.5) * 0.2,
+                dy: (Math.random() - 0.5) * 0.2,
+                o: Math.random() * 0.18 + 0.04,
             });
         }
+        let frame = 0;
         function draw() {
-            ctx.clearRect(0, 0, w, h);
-            // Draw connections
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 120) {
-                        ctx.beginPath();
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.strokeStyle = 'rgba(120,150,255,' + (0.03 * (1 - dist / 120)) + ')';
-                        ctx.lineWidth = 0.5;
-                        ctx.stroke();
-                    }
-                }
+            frame++;
+            // Only draw every other frame for performance
+            if (frame % 2 === 0) {
+                ctx.clearRect(0, 0, w, h);
+                particles.forEach(p => {
+                    p.x += p.dx; p.y += p.dy;
+                    if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+                    if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(140,170,255,' + p.o + ')';
+                    ctx.fill();
+                });
             }
-            // Draw particles
-            particles.forEach(p => {
-                p.x += p.dx; p.y += p.dy;
-                if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
-                if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(140,170,255,' + p.o + ')';
-                ctx.fill();
-            });
             requestAnimationFrame(draw);
         }
         draw();
