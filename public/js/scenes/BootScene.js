@@ -42,8 +42,10 @@ class BootScene extends Phaser.Scene {
     create() {
         if (currentPieceStyle === 'wood') {
             this._createWoodTextures();
+        } else {
+            // Fallback für fehlgeschlagene SVG-Loads
+            BootScene._ensureFallbacks(this);
         }
-        // Lichess-Texturen wurden in preload() geladen
         this.scene.start('GameScene');
     }
 
@@ -115,6 +117,8 @@ class BootScene extends Phaser.Scene {
                         if (loaded >= total) resolve();
                     };
                     img.onerror = () => {
+                        // Fallback-Textur erzeugen
+                        BootScene._createFallbackTexture(boot, key, color, type);
                         loaded++;
                         if (loaded >= total) resolve();
                     };
@@ -161,6 +165,43 @@ class BootScene extends Phaser.Scene {
                 this.textures.addCanvas(key, canvas);
             }
         }
+    }
+
+    // Fallback: prüft ob alle 12 Texturen existieren, erzeugt fehlende
+    static _ensureFallbacks(scene) {
+        for (const color of [COLOR.WHITE, COLOR.BLACK]) {
+            for (const type of Object.values(PIECE)) {
+                const key = `${color}_${type}`;
+                if (!scene.textures.exists(key)) {
+                    BootScene._createFallbackTexture(scene, key, color, type);
+                }
+            }
+        }
+    }
+
+    // Erzeugt eine einfache Text-Fallback-Textur
+    static _createFallbackTexture(scene, key, color, type) {
+        const SYMBOLS = {
+            'white_king': '\u2654', 'white_queen': '\u2655', 'white_rook': '\u2656',
+            'white_bishop': '\u2657', 'white_knight': '\u2658', 'white_pawn': '\u2659',
+            'black_king': '\u265A', 'black_queen': '\u265B', 'black_rook': '\u265C',
+            'black_bishop': '\u265D', 'black_knight': '\u265E', 'black_pawn': '\u265F',
+        };
+        const size = TILE_SIZE - 8;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.font = `${size * 0.8}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color === 'white' ? '#fff' : '#222';
+        ctx.strokeStyle = color === 'white' ? '#333' : '#ccc';
+        ctx.lineWidth = 1.5;
+        const sym = SYMBOLS[key] || '?';
+        ctx.fillText(sym, size / 2, size / 2);
+        ctx.strokeText(sym, size / 2, size / 2);
+        scene.textures.addCanvas(key, canvas);
     }
 
     _getWoodColors(isWhite) {
