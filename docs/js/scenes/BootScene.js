@@ -32,7 +32,7 @@ class BootScene extends Phaser.Scene {
                     const key = `${color}_${type}`;
                     const prefix = COLOR_FILE_MAP[color];
                     const suffix = PIECE_FILE_MAP[type];
-                    const url = `https://lichess1.org/assets/piece/${style}/${prefix}${suffix}.svg`;
+                    const url = `pieces/${style}/${prefix}${suffix}.svg`;
                     this.load.svg(key, url, { width: TILE_SIZE - 8, height: TILE_SIZE - 8 });
                 }
             }
@@ -100,10 +100,9 @@ class BootScene extends Phaser.Scene {
                     const key = `${color}_${type}`;
                     const prefix = COLOR_FILE_MAP[color];
                     const suffix = PIECE_FILE_MAP[type];
-                    const url = `https://lichess1.org/assets/piece/${style}/${prefix}${suffix}.svg`;
+                    const url = `pieces/${style}/${prefix}${suffix}.svg`;
 
                     const img = new Image();
-                    img.crossOrigin = 'anonymous';
                     img.onload = () => {
                         // SVG in Canvas rendern mit gewünschter Größe
                         const canvas = document.createElement('canvas');
