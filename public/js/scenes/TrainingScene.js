@@ -143,15 +143,19 @@ class TrainingScene extends Phaser.Scene {
         const puzzle = puzzles[this.puzzleIndex % puzzles.length];
         this.puzzleIndex++;
 
-        // FEN laden
+        // FEN laden (Stellung VOR dem Gegnerzug)
         this.chess.loadFen(puzzle.fen);
 
-        // Spielerfarbe setzen
-        this.playerColor = puzzle.playerColor === 'black' ? COLOR.BLACK : COLOR.WHITE;
+        // Gegnerzug ausführen (moves[0])
+        const setupMove = puzzle.moves[0];
+        this.chess.makeUciMove(setupMove);
+
+        // Spielerfarbe = wer nach dem Gegnerzug am Zug ist
+        this.playerColor = this.chess.currentTurn;
         this.flipped = (this.playerColor === COLOR.BLACK);
 
-        // Lösung setzen
-        this.solutionMoves = puzzle.solution;
+        // Lösung = restliche Züge
+        this.solutionMoves = puzzle.moves.slice(1);
         this.solutionIndex = 0;
         this.puzzleRating = puzzle.rating;
         this.puzzleId = this.puzzleIndex;
@@ -162,6 +166,15 @@ class TrainingScene extends Phaser.Scene {
         // Koordinaten und Brett aktualisieren
         this._drawCoordLabels();
         this.clearHighlights();
+
+        // Gegnerzug (Setup) hervorheben
+        const fCol = setupMove.charCodeAt(0) - 97;
+        const fRow = 8 - parseInt(setupMove[1]);
+        const tCol = setupMove.charCodeAt(2) - 97;
+        const tRow = 8 - parseInt(setupMove[3]);
+        this._setBoardOverlay(fRow, fCol, COLORS.LAST_MOVE, 0.35);
+        this._setBoardOverlay(tRow, tCol, COLORS.LAST_MOVE, 0.35);
+
         this.drawPieces();
         this._updateUI();
     }
