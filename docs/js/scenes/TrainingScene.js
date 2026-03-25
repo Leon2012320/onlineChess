@@ -1,5 +1,5 @@
 // ============================================
-// Training Scene - Lichess Puzzles
+// Training Scene - Lokale Puzzles
 // ============================================
 
 class TrainingScene extends Phaser.Scene {
@@ -9,8 +9,8 @@ class TrainingScene extends Phaser.Scene {
 
     init(data) {
         data = data || {};
-        this.puzzleAngle = data.angle || 'mateIn1';
         this.puzzleCategoryId = data.category || 'mateIn1';
+        this.puzzleIndex = 0;
     }
 
     create() {
@@ -128,62 +128,42 @@ class TrainingScene extends Phaser.Scene {
         }
     }
 
-    // ---- Puzzle von Lichess laden ----
-    async _fetchPuzzle() {
+    // ---- Puzzle aus lokaler Datenbank laden ----
+    _fetchPuzzle() {
         this.loading = true;
         this.puzzleSolved = false;
-        document.getElementById('status').textContent = 'Puzzle wird geladen...';
 
-        try {
-            const url = 'https://lichess.org/api/puzzle/next?angle=' + encodeURIComponent(this.puzzleAngle);
-            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            if (!resp.ok) throw new Error('API Fehler: ' + resp.status);
-            const data = await resp.json();
-
-            // PGN abspielen bis zum initialPly
-            this.chess.reset();
-            const pgn = data.game.pgn;
-            const pgnMoves = pgn.split(/\s+/).filter(m => m && !m.match(/^\d+\./) && m !== '*');
-            const initialPly = data.puzzle.initialPly;
-
-            // Alle PGN-Züge bis initialPly abspielen (incl. move at index initialPly = opponent setup)
-            for (let i = 0; i <= initialPly && i < pgnMoves.length; i++) {
-                const success = this._playSanMove(pgnMoves[i]);
-                if (!success) {
-                    throw new Error('PGN-Fehler: ' + pgnMoves[i] + ' bei Ply ' + i);
-                }
-            }
-
-            // Nach allen PGN-Zügen ist der Spieler am Zug
-            this.playerColor = this.chess.currentTurn;
-            this.flipped = (this.playerColor === COLOR.BLACK);
-
-            // Solution = Spielerzüge (abwechselnd Spieler/Gegner, Start = Spieler)
-            this.solutionMoves = data.puzzle.solution;
-            this.solutionIndex = 0;
-            this.puzzleRating = data.puzzle.rating;
-            this.puzzleId = data.puzzle.id;
-
+        const puzzles = PUZZLE_DB[this.puzzleCategoryId];
+        if (!puzzles || puzzles.length === 0) {
+            document.getElementById('status').textContent = 'Keine Puzzles für diese Kategorie.';
             this.loading = false;
-            this.selectedTile = null;
-
-            // Koordinaten und Brett aktualisieren
-            this._drawCoordLabels();
-            this.clearHighlights();
-            this.drawPieces();
-
-            // Letzten Gegnerzug (PGN[initialPly]) hervorheben
-            if (initialPly < pgnMoves.length) {
-                this._highlightLastSanMove(pgnMoves[initialPly]);
-            }
-
-            this._updateUI();
-        } catch (err) {
-            this.loading = false;
-            document.getElementById('status').textContent = 'Fehler: ' + err.message;
-            // Bei Fehler automatisch nächstes Puzzle versuchen
-            this.time.delayedCall(2000, () => this._fetchPuzzle());
+            return;
         }
+
+        const puzzle = puzzles[this.puzzleIndex % puzzles.length];
+        this.puzzleIndex++;
+
+        // FEN laden
+        this.chess.loadFen(puzzle.fen);
+
+        // Spielerfarbe setzen
+        this.playerColor = puzzle.playerColor === 'black' ? COLOR.BLACK : COLOR.WHITE;
+        this.flipped = (this.playerColor === COLOR.BLACK);
+
+        // Lösung setzen
+        this.solutionMoves = puzzle.solution;
+        this.solutionIndex = 0;
+        this.puzzleRating = puzzle.rating;
+        this.puzzleId = this.puzzleIndex;
+
+        this.loading = false;
+        this.selectedTile = null;
+
+        // Koordinaten und Brett aktualisieren
+        this._drawCoordLabels();
+        this.clearHighlights();
+        this.drawPieces();
+        this._updateUI();
     }
 
     // Letzten SAN-Zug hervorheben (ungefähr - wir kennen nur die Zielfelder)

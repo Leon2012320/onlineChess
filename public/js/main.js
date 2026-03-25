@@ -89,7 +89,7 @@ function startTrainingFromDropdown() {
         game.scene.start('ExerciseScene', { category: catValue });
     } else if (puzzleCat) {
         activeScene = 'TrainingScene';
-        game.scene.start('TrainingScene', { category: catValue, angle: puzzleCat.angle });
+        game.scene.start('TrainingScene', { category: catValue });
     } else {
         // Fallback
         activeScene = 'ExerciseScene';
