@@ -84,12 +84,15 @@ function startTrainingFromDropdown() {
     const exerciseCat = EXERCISE_CATEGORIES.find(c => c.id === catValue);
     const puzzleCat = PUZZLE_CATEGORIES.find(c => c.id === catValue);
 
+    const diffSelect = document.getElementById('puzzle-difficulty');
+    const difficulty = diffSelect ? diffSelect.value : 'all';
+
     if (exerciseCat) {
         activeScene = 'ExerciseScene';
         game.scene.start('ExerciseScene', { category: catValue });
     } else if (puzzleCat) {
         activeScene = 'TrainingScene';
-        game.scene.start('TrainingScene', { category: catValue });
+        game.scene.start('TrainingScene', { category: catValue, difficulty: difficulty });
     } else {
         // Fallback
         activeScene = 'ExerciseScene';
@@ -140,6 +143,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         catSelect.addEventListener('change', () => {
             if (currentMode === 'train') {
+                stopActiveScene();
+                setTimeout(() => startTrainingFromDropdown(), 50);
+            }
+        });
+    }
+
+    const diffSelect = document.getElementById('puzzle-difficulty');
+    if (diffSelect) {
+        diffSelect.addEventListener('change', () => {
+            if (currentMode === 'train' && activeScene === 'TrainingScene') {
                 stopActiveScene();
                 setTimeout(() => startTrainingFromDropdown(), 50);
             }

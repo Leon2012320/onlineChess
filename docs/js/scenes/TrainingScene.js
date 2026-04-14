@@ -10,6 +10,7 @@ class TrainingScene extends Phaser.Scene {
     init(data) {
         data = data || {};
         this.puzzleCategoryId = data.category || 'mateIn1';
+        this.difficulty = data.difficulty || 'all';
         this.puzzleIndex = 0;
     }
 
@@ -133,11 +134,20 @@ class TrainingScene extends Phaser.Scene {
         this.loading = true;
         this.puzzleSolved = false;
 
-        const puzzles = PUZZLE_DB[this.puzzleCategoryId];
-        if (!puzzles || puzzles.length === 0) {
+        const allPuzzles = PUZZLE_DB[this.puzzleCategoryId];
+        if (!allPuzzles || allPuzzles.length === 0) {
             document.getElementById('status').textContent = 'Keine Puzzles für diese Kategorie.';
             this.loading = false;
             return;
+        }
+
+        // Nach Schwierigkeit filtern
+        const ratingRanges = { easy: [0, 1000], medium: [1000, 1500], hard: [1500, 2000], expert: [2000, 9999] };
+        let puzzles = allPuzzles;
+        if (this.difficulty !== 'all' && ratingRanges[this.difficulty]) {
+            const [minR, maxR] = ratingRanges[this.difficulty];
+            puzzles = allPuzzles.filter(p => p.rating >= minR && p.rating < maxR);
+            if (puzzles.length === 0) puzzles = allPuzzles; // Fallback
         }
 
         const puzzle = puzzles[this.puzzleIndex % puzzles.length];
