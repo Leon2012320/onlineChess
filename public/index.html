@@ -353,6 +353,30 @@
             color: #6a6a8f;
             font-weight: 500;
         }
+        .tmode-btn {
+            min-width: 80px;
+            transition: all 0.2s;
+        }
+        .tmode-btn.active {
+            background: linear-gradient(135deg, #d4a853, #c4913a) !important;
+            color: #1a1a2e !important;
+            font-weight: 700;
+        }
+        #storm-streak-hud {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            min-height: 1.4em;
+            letter-spacing: 0.5px;
+        }
+        #storm-streak-hud .hud-timer {
+            color: #ff6b6b;
+            font-variant-numeric: tabular-nums;
+        }
+        #storm-streak-hud .hud-score {
+            color: #d4a853;
+        }
 
         /* --- Friend Setup Panel --- */
         #friend-setup {
@@ -693,6 +717,11 @@
         </div>
         <div id="training-controls">
             <div class="row">
+                <button id="btn-tmode-normal" class="ctrl-btn tmode-btn active">♟ Normal</button>
+                <button id="btn-tmode-storm" class="ctrl-btn tmode-btn">⚡ Storm</button>
+                <button id="btn-tmode-streak" class="ctrl-btn tmode-btn">🔥 Streak</button>
+            </div>
+            <div class="row" id="puzzle-filter-row">
                 <select id="puzzle-category"></select>
                 <select id="puzzle-difficulty">
                     <option value="all">Alle Stufen</option>
@@ -708,6 +737,7 @@
                 <button id="btn-hint" class="ctrl-btn">💡 Hinweis</button>
                 <button id="btn-prev-puzzle" style="display:none;"></button>
             </div>
+            <div id="storm-streak-hud"></div>
             <div id="puzzle-title"></div>
             <div id="puzzle-hint"></div>
             <div id="puzzle-progress"></div>

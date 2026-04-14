@@ -20,6 +20,7 @@ const game = new Phaser.Game(config);
 // ---- Modus-Umschaltung ----
 let currentMode = 'play';
 let activeScene = 'GameScene';
+let trainingGameMode = 'normal';
 
 function stopActiveScene() {
     if (game.scene.isActive(activeScene)) {
@@ -87,12 +88,23 @@ function startTrainingFromDropdown() {
     const diffSelect = document.getElementById('puzzle-difficulty');
     const difficulty = diffSelect ? diffSelect.value : 'all';
 
+    // Storm/Streak immer als TrainingScene starten
+    if (trainingGameMode === 'storm' || trainingGameMode === 'streak') {
+        activeScene = 'TrainingScene';
+        game.scene.start('TrainingScene', {
+            category: (puzzleCat ? catValue : 'mateIn1'),
+            difficulty: difficulty,
+            gameMode: trainingGameMode
+        });
+        return;
+    }
+
     if (exerciseCat) {
         activeScene = 'ExerciseScene';
         game.scene.start('ExerciseScene', { category: catValue });
     } else if (puzzleCat) {
         activeScene = 'TrainingScene';
-        game.scene.start('TrainingScene', { category: catValue, difficulty: difficulty });
+        game.scene.start('TrainingScene', { category: catValue, difficulty: difficulty, gameMode: 'normal' });
     } else {
         // Fallback
         activeScene = 'ExerciseScene';
@@ -116,6 +128,42 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-mode-play').addEventListener('click', () => switchMode('play'));
     document.getElementById('btn-mode-friend').addEventListener('click', () => switchMode('friend'));
     document.getElementById('btn-mode-train').addEventListener('click', () => switchMode('train'));
+
+    // Training mode buttons (Normal/Storm/Streak)
+    function updateTrainingModeUI() {
+        document.querySelectorAll('.tmode-btn').forEach(b => b.classList.remove('active'));
+        const activeBtn = document.getElementById('btn-tmode-' + trainingGameMode);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        const filterRow = document.getElementById('puzzle-filter-row');
+        const hintBtn = document.getElementById('btn-hint');
+        const resetBtn = document.getElementById('btn-reset-puzzle');
+        const nextBtn = document.getElementById('btn-next-puzzle');
+        const hudEl = document.getElementById('storm-streak-hud');
+
+        if (trainingGameMode === 'storm' || trainingGameMode === 'streak') {
+            // Hide category/difficulty/nav for Storm/Streak
+            if (filterRow) filterRow.style.display = 'none';
+            if (hintBtn) hintBtn.parentElement.style.display = 'none';
+            if (hudEl) hudEl.style.display = '';
+        } else {
+            if (filterRow) filterRow.style.display = '';
+            if (hintBtn) hintBtn.parentElement.style.display = '';
+            if (hudEl) { hudEl.style.display = 'none'; hudEl.textContent = ''; }
+            if (hudEl) { hudEl.style.display = 'none'; hudEl.textContent = ''; }
+        }
+    }
+
+    ['normal', 'storm', 'streak'].forEach(m => {
+        document.getElementById('btn-tmode-' + m).addEventListener('click', () => {
+            trainingGameMode = m;
+            updateTrainingModeUI();
+            if (currentMode === 'train') {
+                stopActiveScene();
+                setTimeout(() => startTrainingFromDropdown(), 50);
+            }
+        });
+    });
 
     const catSelect = document.getElementById('puzzle-category');
     if (catSelect) {

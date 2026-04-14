@@ -11,7 +11,22 @@ class TrainingScene extends Phaser.Scene {
         data = data || {};
         this.puzzleCategoryId = data.category || 'mateIn1';
         this.difficulty = data.difficulty || 'all';
+        this.gameMode = data.gameMode || 'normal';
         this.puzzleIndex = 0;
+
+        // Storm
+        this.stormScore = 0;
+        this.stormTimeLeft = 180; // 3 Minuten
+        this.stormActive = false;
+        this.stormTimer = null;
+
+        // Streak
+        this.streakScore = 0;
+        this.streakActive = false;
+        this.streakFailed = false;
+
+        // Prepared puzzle list for storm/streak
+        this.puzzleList = null;
     }
 
     create() {
@@ -31,7 +46,27 @@ class TrainingScene extends Phaser.Scene {
         this._createWoodTileTextures();
         this.drawBoard();
         this._setupInput();
+
+        // Build puzzle list for storm/streak
+        if (this.gameMode === 'storm' || this.gameMode === 'streak') {
+            this.puzzleList = this._buildPuzzleList();
+        }
+
         this._fetchPuzzle();
+
+        // Start storm timer
+        if (this.gameMode === 'storm') {
+            this.stormActive = true;
+            this.stormTimer = this.time.addEvent({
+                delay: 1000,
+                callback: this._stormTick,
+                callbackScope: this,
+                loop: true
+            });
+        }
+        if (this.gameMode === 'streak') {
+            this.streakActive = true;
+        }
     }
 
     // ---- Holz-Texturen ----
@@ -130,28 +165,76 @@ class TrainingScene extends Phaser.Scene {
     }
 
     // ---- Puzzle aus lokaler Datenbank laden ----
-    _fetchPuzzle() {
-        this.loading = true;
-        this.puzzleSolved = false;
-
+    _getFilteredPuzzles() {
         const allPuzzles = PUZZLE_DB[this.puzzleCategoryId];
-        if (!allPuzzles || allPuzzles.length === 0) {
-            document.getElementById('status').textContent = 'Keine Puzzles für diese Kategorie.';
-            this.loading = false;
-            return;
-        }
+        if (!allPuzzles || allPuzzles.length === 0) return [];
 
-        // Nach Schwierigkeit filtern
         const ratingRanges = { easy: [0, 1000], medium: [1000, 1500], hard: [1500, 2000], expert: [2000, 9999] };
         let puzzles = allPuzzles;
         if (this.difficulty !== 'all' && ratingRanges[this.difficulty]) {
             const [minR, maxR] = ratingRanges[this.difficulty];
             puzzles = allPuzzles.filter(p => p.rating >= minR && p.rating < maxR);
-            if (puzzles.length === 0) puzzles = allPuzzles; // Fallback
+            if (puzzles.length === 0) puzzles = allPuzzles;
+        }
+        return puzzles;
+    }
+
+    _buildPuzzleList() {
+        // Collect puzzles from ALL categories for Storm/Streak
+        let all = [];
+        for (const cat of Object.keys(PUZZLE_DB)) {
+            all = all.concat(PUZZLE_DB[cat]);
         }
 
-        const puzzle = puzzles[this.puzzleIndex % puzzles.length];
-        this.puzzleIndex++;
+        // Apply difficulty filter for Storm
+        if (this.gameMode === 'storm' && this.difficulty !== 'all') {
+            const ratingRanges = { easy: [0, 1000], medium: [1000, 1500], hard: [1500, 2000], expert: [2000, 9999] };
+            if (ratingRanges[this.difficulty]) {
+                const [minR, maxR] = ratingRanges[this.difficulty];
+                const filtered = all.filter(p => p.rating >= minR && p.rating < maxR);
+                if (filtered.length > 0) all = filtered;
+            }
+        }
+
+        if (this.gameMode === 'streak') {
+            // Sort by rating ascending for progressive difficulty
+            all.sort((a, b) => a.rating - b.rating);
+        } else {
+            // Shuffle for Storm
+            for (let i = all.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [all[i], all[j]] = [all[j], all[i]];
+            }
+        }
+        return all;
+    }
+
+    _fetchPuzzle() {
+        this.loading = true;
+        this.puzzleSolved = false;
+
+        let puzzle;
+
+        if (this.puzzleList) {
+            // Storm/Streak: use prepared list
+            if (this.puzzleList.length === 0) {
+                document.getElementById('status').textContent = 'Keine Puzzles verfügbar.';
+                this.loading = false;
+                return;
+            }
+            puzzle = this.puzzleList[this.puzzleIndex % this.puzzleList.length];
+            this.puzzleIndex++;
+        } else {
+            // Normal mode
+            const puzzles = this._getFilteredPuzzles();
+            if (puzzles.length === 0) {
+                document.getElementById('status').textContent = 'Keine Puzzles für diese Kategorie.';
+                this.loading = false;
+                return;
+            }
+            puzzle = puzzles[this.puzzleIndex % puzzles.length];
+            this.puzzleIndex++;
+        }
 
         // FEN laden (Stellung VOR dem Gegnerzug)
         this.chess.loadFen(puzzle.fen);
@@ -272,10 +355,41 @@ class TrainingScene extends Phaser.Scene {
 
     // ---- UI ----
     _updateUI() {
-        const cat = PUZZLE_CATEGORIES.find(c => c.id === this.puzzleCategoryId);
-        const catName = cat ? cat.name : 'Puzzle';
         const rating = this.puzzleRating || '?';
         const colorText = this.playerColor === COLOR.BLACK ? 'Schwarz' : 'Weiß';
+        const titleEl = document.getElementById('puzzle-title');
+        const hintEl = document.getElementById('puzzle-hint');
+        const progressEl = document.getElementById('puzzle-progress');
+
+        if (this.gameMode === 'storm') {
+            if (this.puzzleSolved && this.stormActive) {
+                document.getElementById('status').textContent = '✓ Richtig!';
+            } else if (!this.loading && this.stormActive) {
+                document.getElementById('status').textContent = `Rating: ${rating} — Dein Zug`;
+            }
+            if (titleEl) titleEl.textContent = '';
+            if (hintEl) hintEl.textContent = '';
+            if (progressEl) progressEl.textContent = '';
+            this._updateHUD();
+            return;
+        }
+
+        if (this.gameMode === 'streak') {
+            if (this.puzzleSolved && this.streakActive) {
+                document.getElementById('status').textContent = '✓ Richtig!';
+            } else if (!this.loading && this.streakActive) {
+                document.getElementById('status').textContent = `Rating: ${rating} — Dein Zug`;
+            }
+            if (titleEl) titleEl.textContent = '';
+            if (hintEl) hintEl.textContent = '';
+            if (progressEl) progressEl.textContent = '';
+            this._updateHUD();
+            return;
+        }
+
+        // Normal mode
+        const cat = PUZZLE_CATEGORIES.find(c => c.id === this.puzzleCategoryId);
+        const catName = cat ? cat.name : 'Puzzle';
 
         if (this.puzzleSolved) {
             document.getElementById('status').textContent = '✓ Richtig! Gut gemacht!';
@@ -283,17 +397,60 @@ class TrainingScene extends Phaser.Scene {
             document.getElementById('status').textContent = `${catName} (${colorText}) — Rating: ${rating} — Dein Zug`;
         }
 
-        const titleEl = document.getElementById('puzzle-title');
         if (titleEl) titleEl.textContent = this.puzzleId ? `Puzzle #${this.puzzleId}` : '';
-
-        const hintEl = document.getElementById('puzzle-hint');
         if (hintEl) hintEl.textContent = '';
-
-        const progressEl = document.getElementById('puzzle-progress');
         if (progressEl) {
             const remaining = this.solutionMoves ? Math.ceil((this.solutionMoves.length - this.solutionIndex) / 2) : 0;
             progressEl.textContent = this.puzzleSolved ? '' : `Noch ${remaining} Zug/Züge`;
         }
+    }
+
+    // ---- Storm/Streak HUD ----
+    _updateHUD() {
+        const hudEl = document.getElementById('storm-streak-hud');
+        if (!hudEl) return;
+
+        if (this.gameMode === 'storm') {
+            const min = Math.floor(this.stormTimeLeft / 60);
+            const sec = this.stormTimeLeft % 60;
+            const timeStr = `${min}:${sec.toString().padStart(2, '0')}`;
+            const timeClass = this.stormTimeLeft <= 30 ? 'hud-timer' : 'hud-score';
+            hudEl.innerHTML = `⚡ Storm &nbsp;|&nbsp; <span class="${timeClass}">⏱ ${timeStr}</span> &nbsp;|&nbsp; <span class="hud-score">Gelöst: ${this.stormScore}</span>`;
+        } else if (this.gameMode === 'streak') {
+            hudEl.innerHTML = `🔥 Streak &nbsp;|&nbsp; <span class="hud-score">Serie: ${this.streakScore}</span> &nbsp;|&nbsp; Rating: ${this.puzzleRating || '?'}`;
+        } else {
+            hudEl.textContent = '';
+        }
+    }
+
+    // ---- Storm Timer ----
+    _stormTick() {
+        if (!this.stormActive) return;
+        this.stormTimeLeft--;
+        this._updateHUD();
+        if (this.stormTimeLeft <= 0) {
+            this._endStorm();
+        }
+    }
+
+    _endStorm() {
+        this.stormActive = false;
+        this.puzzleSolved = true;
+        if (this.stormTimer) this.stormTimer.remove();
+        document.getElementById('status').textContent = `⚡ Storm beendet!`;
+        const hudEl = document.getElementById('storm-streak-hud');
+        if (hudEl) hudEl.innerHTML = `⚡ <span class="hud-score">Ergebnis: ${this.stormScore} Puzzles gelöst!</span>`;
+        document.getElementById('puzzle-progress').textContent = '';
+    }
+
+    _endStreak() {
+        this.streakActive = false;
+        this.streakFailed = true;
+        this.puzzleSolved = true;
+        document.getElementById('status').textContent = `🔥 Streak beendet!`;
+        const hudEl = document.getElementById('storm-streak-hud');
+        if (hudEl) hudEl.innerHTML = `🔥 <span class="hud-score">Ergebnis: ${this.streakScore} Puzzles in Folge!</span>`;
+        document.getElementById('puzzle-progress').textContent = '';
     }
 
     // ---- Eingabe ----
@@ -313,6 +470,10 @@ class TrainingScene extends Phaser.Scene {
     _handleClick(row, col) {
         if (this.puzzleSolved || this.loading) return;
         if (this.chess.currentTurn !== this.playerColor) return;
+
+        // Storm/Streak ended
+        if (this.gameMode === 'storm' && !this.stormActive) return;
+        if (this.gameMode === 'streak' && this.streakFailed) return;
 
         if (this.selectedTile) {
             const from = this.selectedTile;
@@ -349,7 +510,21 @@ class TrainingScene extends Phaser.Scene {
                 this.time.delayedCall(500, () => this.clearHighlights());
                 this.selectedTile = null;
                 this.clearMoveIndicators();
-                document.getElementById('status').textContent = 'Falscher Zug! Versuche es erneut.';
+
+                if (this.gameMode === 'storm') {
+                    // Zeitstrafe: -10 Sekunden
+                    this.stormTimeLeft = Math.max(0, this.stormTimeLeft - 10);
+                    document.getElementById('status').textContent = '✗ Falsch! -10 Sekunden';
+                    this._updateHUD();
+                    if (this.stormTimeLeft <= 0) {
+                        this._endStorm();
+                    }
+                } else if (this.gameMode === 'streak') {
+                    // Streak beendet
+                    this._endStreak();
+                } else {
+                    document.getElementById('status').textContent = 'Falscher Zug! Versuche es erneut.';
+                }
             }
             this.selectedTile = null;
             this.clearMoveIndicators();
@@ -390,6 +565,29 @@ class TrainingScene extends Phaser.Scene {
 
     _onPuzzleSolved() {
         this.puzzleSolved = true;
+
+        if (this.gameMode === 'storm') {
+            this.stormScore++;
+            this._updateHUD();
+            this._updateUI();
+            // Schnell weiter (400ms)
+            this.time.delayedCall(400, () => {
+                if (this.stormActive) this._fetchPuzzle();
+            });
+            return;
+        }
+
+        if (this.gameMode === 'streak') {
+            this.streakScore++;
+            this._updateHUD();
+            this._updateUI();
+            // Schnell weiter (400ms)
+            this.time.delayedCall(400, () => {
+                if (this.streakActive) this._fetchPuzzle();
+            });
+            return;
+        }
+
         this._updateUI();
         this.time.delayedCall(2000, () => this._fetchPuzzle());
     }
