@@ -6,7 +6,7 @@
     const firebaseConfig = {
         apiKey: "AIzaSyD-wENnM1oJL6xXf-tk6XEODqU3dfuVA7w",
         authDomain: "onlinechess-e2918.firebaseapp.com",
-        databaseURL: "https://onlinechess-e2918-default-rtdb.firebaseio.com",
+        databaseURL: "https://onlinechess-e2918-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "onlinechess-e2918",
         storageBucket: "onlinechess-e2918.firebasestorage.app",
         messagingSenderId: "522168409644",
