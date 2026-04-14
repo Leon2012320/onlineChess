@@ -52,9 +52,7 @@ class TrainingScene extends Phaser.Scene {
             this.puzzleList = this._buildPuzzleList();
         }
 
-        this._fetchPuzzle();
-
-        // Start storm timer
+        // Storm/Streak aktivieren VOR dem ersten Puzzle, damit UI korrekt aktualisiert
         if (this.gameMode === 'storm') {
             this.stormActive = true;
             this.stormTimer = this.time.addEvent({
@@ -67,6 +65,8 @@ class TrainingScene extends Phaser.Scene {
         if (this.gameMode === 'streak') {
             this.streakActive = true;
         }
+
+        this._fetchPuzzle();
     }
 
     // ---- Koordinaten-Umrechnung (flipped) ----
@@ -487,11 +487,22 @@ class TrainingScene extends Phaser.Scene {
                 return;
             }
 
+            // Prüfe ob Zug legal ist
+            const legalMoves = this.chess.getLegalMoves(drag.boardRow, drag.boardCol);
+            const isLegal = legalMoves.find(m => m.row === boardRow && m.col === boardCol);
+            if (!isLegal) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
             // Validate against solution
             const expectedUci = this.solutionMoves[this.solutionIndex];
             const playerUci = this._toUci(drag.boardRow, drag.boardCol, boardRow, boardCol);
+            const isExactSolution = (playerUci === expectedUci || playerUci === expectedUci.substring(0, 4));
+            const isAlternative = !isExactSolution && this._isAlternativeWinningMove(drag.boardRow, drag.boardCol, boardRow, boardCol);
 
-            if (playerUci === expectedUci || playerUci === expectedUci.substring(0, 4)) {
+            if (isExactSolution) {
                 const result = this.chess.makeUciMove(expectedUci);
                 if (result) {
                     this.solutionIndex++;
@@ -508,6 +519,17 @@ class TrainingScene extends Phaser.Scene {
                     }
                     this.time.delayedCall(500, () => this._playOpponentResponse());
                 }
+            } else if (isAlternative) {
+                // Alternativer korrekter Zug
+                this.chess.makeMove(drag.boardRow, drag.boardCol, boardRow, boardCol);
+                this.solutionIndex = this.solutionMoves.length;
+                this.clearHighlights();
+                this.clearMoveIndicators();
+                this._setBoardOverlay(drag.boardRow, drag.boardCol, 0x66cc66, 0.4);
+                this._setBoardOverlay(boardRow, boardCol, 0x66cc66, 0.4);
+                this.drawPieces();
+                this.selectedTile = null;
+                this._onPuzzleSolved();
             } else {
                 // Wrong move
                 const vr = this._viewRow(boardRow);
@@ -533,6 +555,31 @@ class TrainingScene extends Phaser.Scene {
         });
     }
 
+    // Prüft ob ein Spielerzug alternativ korrekt ist (z.B. anderes Matt bei mateIn1)
+    _isAlternativeWinningMove(fromRow, fromCol, toRow, toCol) {
+        // Zug muss legal sein
+        const legalMoves = this.chess.getLegalMoves(fromRow, fromCol);
+        if (!legalMoves.find(m => m.row === toRow && m.col === toCol)) return false;
+
+        const state = this.chess.getState();
+        const result = this.chess.makeMove(fromRow, fromCol, toRow, toCol);
+        if (!result) {
+            this.chess.loadState(state);
+            return false;
+        }
+
+        // Am letzten Spielerzug: Matt = richtig
+        const isLastPlayerMove = (this.solutionIndex === this.solutionMoves.length - 1) ||
+                                  (this.solutionIndex === this.solutionMoves.length - 2 && this.solutionMoves.length % 2 === 1);
+        if (result.checkmate) {
+            this.chess.loadState(state);
+            return true;
+        }
+
+        this.chess.loadState(state);
+        return false;
+    }
+
     _handleClick(row, col) {
         if (this.puzzleSolved || this.loading) return;
         if (this.chess.currentTurn !== this.playerColor) return;
@@ -543,12 +590,32 @@ class TrainingScene extends Phaser.Scene {
 
         if (this.selectedTile) {
             const from = this.selectedTile;
+
+            // Prüfe zunächst ob der Zug überhaupt legal ist
+            const legalMoves = this.chess.getLegalMoves(from.row, from.col);
+            const isLegal = legalMoves.find(m => m.row === row && m.col === col);
+            if (!isLegal) {
+                // Kein legaler Zug: Wenn eigene Figur angeklickt, diese auswählen
+                const piece = this.chess.getPiece(row, col);
+                if (piece && piece.color === this.playerColor) {
+                    this._selectTile(row, col);
+                } else {
+                    this.selectedTile = null;
+                    this.clearHighlights();
+                    this.clearMoveIndicators();
+                }
+                return;
+            }
+
             // Prüfe ob der Spielerzug dem nächsten Solution-Zug entspricht
             const expectedUci = this.solutionMoves[this.solutionIndex];
             const playerUci = this._toUci(from.row, from.col, row, col);
 
             // Auch Bauernumwandlung prüfen (UCI mit 5 Zeichen)
-            if (playerUci === expectedUci || playerUci === expectedUci.substring(0, 4)) {
+            const isExactSolution = (playerUci === expectedUci || playerUci === expectedUci.substring(0, 4));
+            const isAlternative = !isExactSolution && this._isAlternativeWinningMove(from.row, from.col, row, col);
+
+            if (isExactSolution) {
                 const result = this.chess.makeUciMove(expectedUci);
                 if (result) {
                     this.solutionIndex++;
@@ -568,8 +635,19 @@ class TrainingScene extends Phaser.Scene {
                     // Gegnerzug abspielen
                     this.time.delayedCall(500, () => this._playOpponentResponse());
                 }
+            } else if (isAlternative) {
+                // Alternativer korrekter Zug (z.B. anderes Matt)
+                this.chess.makeMove(from.row, from.col, row, col);
+                this.solutionIndex = this.solutionMoves.length; // Puzzle abgeschlossen
+                this.clearHighlights();
+                this.clearMoveIndicators();
+                this._setBoardOverlay(from.row, from.col, 0x66cc66, 0.4);
+                this._setBoardOverlay(row, col, 0x66cc66, 0.4);
+                this.drawPieces();
+                this.selectedTile = null;
+                this._onPuzzleSolved();
             } else {
-                // Falscher Zug
+                // Falscher Zug (aber legal)
                 const vr = this._viewRow(row);
                 const vc = this._viewCol(col);
                 this._setViewOverlay(vr, vc, COLORS.CHECK, 0.5);
