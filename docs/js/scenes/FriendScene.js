@@ -338,6 +338,7 @@ class FriendScene extends Phaser.Scene {
     drawPieces() {
         this.pieceSprites.forEach(s => s.destroy());
         this.pieceSprites = [];
+        this._pieceSpriteMap = {};
         for (let row = 0; row < BOARD_SIZE; row++) {
             for (let col = 0; col < BOARD_SIZE; col++) {
                 const piece = this.chess.getPiece(row, col);
@@ -348,7 +349,10 @@ class FriendScene extends Phaser.Scene {
                     const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
                     const key = `${piece.color}_${piece.type}`;
                     const sprite = this.add.image(x, y, key);
+                    sprite._boardRow = row;
+                    sprite._boardCol = col;
                     this.pieceSprites.push(sprite);
+                    this._pieceSpriteMap[`${row}_${col}`] = sprite;
                 }
             }
         }
@@ -359,15 +363,106 @@ class FriendScene extends Phaser.Scene {
         // Buttons are now bound in main.js DOMContentLoaded
     }
 
-    // ---- Eingabe ----
+    // ---- Eingabe (Click + Drag & Drop) ----
     _setupInput() {
+        this._dragging = null;
+
         this.input.on('pointerdown', (pointer) => {
             const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
             const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
             if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) return;
             const boardRow = this._boardRow(viewRow);
             const boardCol = this._boardCol(viewCol);
-            this._handleClick(boardRow, boardCol);
+            const currentColor = this.chess.currentTurn;
+
+            const piece = this.chess.getPiece(boardRow, boardCol);
+            if (piece && piece.color === currentColor && !this.chess.gameOver) {
+                const sprite = this._pieceSpriteMap && this._pieceSpriteMap[`${boardRow}_${boardCol}`];
+                if (sprite) {
+                    this._dragging = {
+                        sprite, boardRow, boardCol,
+                        startViewCol: viewCol, startViewRow: viewRow,
+                        origX: sprite.x, origY: sprite.y
+                    };
+                    sprite.setDepth(100);
+                    this._selectTile(boardRow, boardCol);
+                    return;
+                }
+            }
+
+            if (this.selectedTile && !this._dragging) {
+                this._handleClick(boardRow, boardCol);
+            } else if (!piece || (piece && piece.color !== currentColor)) {
+                this._handleClick(boardRow, boardCol);
+            }
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (!this._dragging) return;
+            this._dragging.sprite.x = pointer.x;
+            this._dragging.sprite.y = pointer.y;
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            if (!this._dragging) return;
+            const drag = this._dragging;
+            this._dragging = null;
+            drag.sprite.setDepth(0);
+
+            const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
+            const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
+
+            if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            const boardRow = this._boardRow(viewRow);
+            const boardCol = this._boardCol(viewCol);
+
+            if (boardRow === drag.boardRow && boardCol === drag.boardCol) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            // Check filtered moves for variants
+            const filteredMoves = this._getFilteredMoves(drag.boardRow, drag.boardCol);
+            const isAllowed = filteredMoves.some(m => m.row === boardRow && m.col === boardCol);
+
+            if (isAllowed) {
+                let moveResult;
+                if (this.variant === 'antichess') {
+                    moveResult = this._makeAntichessMove(drag.boardRow, drag.boardCol, boardRow, boardCol);
+                } else {
+                    moveResult = this.chess.makeMove(drag.boardRow, drag.boardCol, boardRow, boardCol);
+                }
+
+                if (moveResult) {
+                    this.lastMove = moveResult;
+                    this.selectedTile = null;
+                    this.clearMoveIndicators();
+                    this.clearHighlights();
+                    this.highlightLastMove();
+                    this.drawPieces();
+
+                    if (this.variant === 'antichess') {
+                        this._checkAntichessEnd(moveResult);
+                    }
+                    this._updateStatus(moveResult);
+
+                    if (!this.chess.gameOver) {
+                        this.time.delayedCall(600, () => this._flipBoard());
+                    }
+                } else {
+                    drag.sprite.x = drag.origX;
+                    drag.sprite.y = drag.origY;
+                }
+            } else {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+            }
         });
     }
 

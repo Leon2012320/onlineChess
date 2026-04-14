@@ -5,16 +5,23 @@
 class ChessEngine {
     constructor(chess) {
         this.chess = chess;
-        this.maxDepth = 3;
+        this.maxDepth = 2;
+        this.errorChance = 0.1;
     }
 
     setDifficulty(level) {
-        // 1 = Anfänger, 2 = Mittel, 3 = Stark
+        // 1-8 Schwierigkeitsstufen
+        // errorChance = Wahrscheinlichkeit einen zufälligen statt besten Zug zu machen
         switch (level) {
-            case 1: this.maxDepth = 1; break;
-            case 2: this.maxDepth = 3; break;
-            case 3: this.maxDepth = 4; break;
-            default: this.maxDepth = 3;
+            case 1: this.maxDepth = 1; this.errorChance = 0.5;  break; // Anfänger
+            case 2: this.maxDepth = 1; this.errorChance = 0.3;  break; // Leicht
+            case 3: this.maxDepth = 2; this.errorChance = 0.25; break; // Mittel-Leicht
+            case 4: this.maxDepth = 2; this.errorChance = 0.1;  break; // Mittel
+            case 5: this.maxDepth = 3; this.errorChance = 0.08; break; // Mittel-Stark
+            case 6: this.maxDepth = 3; this.errorChance = 0.0;  break; // Stark
+            case 7: this.maxDepth = 4; this.errorChance = 0.0;  break; // Sehr Stark
+            case 8: this.maxDepth = 5; this.errorChance = 0.0;  break; // Meister
+            default: this.maxDepth = 2; this.errorChance = 0.1;
         }
     }
 
@@ -202,6 +209,11 @@ class ChessEngine {
         moves = this.orderMoves(moves);
 
         if (moves.length === 0) return null;
+
+        // Zufälligen Zug bei errorChance
+        if (this.errorChance > 0 && Math.random() < this.errorChance) {
+            return moves[Math.floor(Math.random() * moves.length)];
+        }
 
         let bestMove = null;
         let bestEval = isMaximizing ? -Infinity : Infinity;

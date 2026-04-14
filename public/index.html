@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schach</title>
+    <title>Schach v0.5 Beta</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -481,6 +481,10 @@
         }
         #phaser-game canvas {
             border-radius: 16px;
+            cursor: grab;
+        }
+        #phaser-game canvas:active {
+            cursor: grabbing;
         }
 
         /* --- Footer --- */
@@ -681,7 +685,7 @@
     <div id="chess-float-bg"></div>
     <div class="container-border">
     <div id="game-container">
-        <h1>&#9816; Schach</h1>
+        <h1>&#9816; Schach <span style="font-size:0.5em;font-weight:400;opacity:0.5;">v0.5 Beta</span></h1>
         <div id="mode-switch">
             <button id="btn-mode-play" class="active">&#9876; Spielen</button>
             <button id="btn-mode-friend">&#9822; Gegen Freund</button>
@@ -693,9 +697,14 @@
                 <option value="black">Spielen als Schwarz</option>
             </select>
             <select id="difficulty" title="Schwierigkeit">
-                <option value="1">Anfänger</option>
-                <option value="2" selected>Mittel</option>
-                <option value="3">Stark</option>
+                <option value="1">Stufe 1 – Anfänger</option>
+                <option value="2">Stufe 2 – Leicht</option>
+                <option value="3">Stufe 3 – Mittel-Leicht</option>
+                <option value="4" selected>Stufe 4 – Mittel</option>
+                <option value="5">Stufe 5 – Mittel-Stark</option>
+                <option value="6">Stufe 6 – Stark</option>
+                <option value="7">Stufe 7 – Sehr Stark</option>
+                <option value="8">Stufe 8 – Meister</option>
             </select>
             <button id="btn-new-game" class="ctrl-btn btn-accent">Neues Spiel</button>
         </div>
@@ -784,21 +793,21 @@
     <canvas id="particles-bg"></canvas>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <script src="js/constants.js?v=3"></script>
-    <script src="js/chessLogic.js?v=3"></script>
-    <script src="js/chessEngine.js?v=3"></script>
-    <script src="js/puzzleDatabase.js?v=4"></script>
-    <script src="js/boardUtils.js?v=4"></script>
-    <script src="js/scenes/BootScene.js?v=4"></script>
-    <script src="js/scenes/GameScene.js?v=4"></script>
-    <script src="js/scenes/FriendScene.js?v=4"></script>
-    <script src="js/scenes/ExerciseScene.js?v=4"></script>
-    <script src="js/scenes/TrainingScene.js?v=4"></script>
-    <script src="js/main.js?v=4"></script>
+    <script src="js/constants.js?v=5"></script>
+    <script src="js/chessLogic.js?v=5"></script>
+    <script src="js/chessEngine.js?v=5"></script>
+    <script src="js/puzzleDatabase.js?v=5"></script>
+    <script src="js/boardUtils.js?v=5"></script>
+    <script src="js/scenes/BootScene.js?v=5"></script>
+    <script src="js/scenes/GameScene.js?v=5"></script>
+    <script src="js/scenes/FriendScene.js?v=5"></script>
+    <script src="js/scenes/ExerciseScene.js?v=5"></script>
+    <script src="js/scenes/TrainingScene.js?v=5"></script>
+    <script src="js/main.js?v=5"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="js/presence.js?v=4"></script>
+    <script src="js/presence.js?v=5"></script>
     <script>
     // Floating chess pieces background
     (function() {

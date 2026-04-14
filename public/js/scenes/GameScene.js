@@ -99,6 +99,7 @@ class GameScene extends Phaser.Scene {
     drawPieces() {
         this.pieceSprites.forEach((s) => s.destroy());
         this.pieceSprites = [];
+        this._pieceSpriteMap = {};
 
         for (let row = 0; row < BOARD_SIZE; row++) {
             for (let col = 0; col < BOARD_SIZE; col++) {
@@ -110,7 +111,10 @@ class GameScene extends Phaser.Scene {
                     const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
                     const key = `${piece.color}_${piece.type}`;
                     const sprite = this.add.image(x, y, key);
+                    sprite._boardRow = row;
+                    sprite._boardCol = col;
                     this.pieceSprites.push(sprite);
+                    this._pieceSpriteMap[`${row}_${col}`] = sprite;
                 }
             }
         }
@@ -146,15 +150,92 @@ class GameScene extends Phaser.Scene {
         this.scene.restart();
     }
 
-    // ---- Eingabe ----
+    // ---- Eingabe (Click + Drag & Drop) ----
     setupInput() {
+        this._dragging = null;
+
         this.input.on('pointerdown', (pointer) => {
             const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
             const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
             if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) return;
             const boardRow = this._boardRow(viewRow);
             const boardCol = this._boardCol(viewCol);
-            this.handleTileClick(boardRow, boardCol);
+
+            const piece = this.chess.getPiece(boardRow, boardCol);
+            if (piece && piece.color === this.playerColor && !this.engineThinking && !this.chess.gameOver) {
+                // Start dragging
+                const sprite = this._pieceSpriteMap && this._pieceSpriteMap[`${boardRow}_${boardCol}`];
+                if (sprite) {
+                    this._dragging = {
+                        sprite, boardRow, boardCol,
+                        startViewCol: viewCol, startViewRow: viewRow,
+                        origX: sprite.x, origY: sprite.y
+                    };
+                    sprite.setDepth(100);
+                    this.selectTile(boardRow, boardCol);
+                    return;
+                }
+            }
+
+            // Clicking on a target square while a piece is selected (no drag)
+            if (this.selectedTile && !this._dragging) {
+                this.handleTileClick(boardRow, boardCol);
+            } else if (!piece || (piece && piece.color !== this.playerColor)) {
+                this.handleTileClick(boardRow, boardCol);
+            }
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (!this._dragging) return;
+            this._dragging.sprite.x = pointer.x;
+            this._dragging.sprite.y = pointer.y;
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            if (!this._dragging) return;
+            const drag = this._dragging;
+            this._dragging = null;
+            drag.sprite.setDepth(0);
+
+            const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
+            const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
+
+            if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) {
+                // Dropped outside – snap back
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            const boardRow = this._boardRow(viewRow);
+            const boardCol = this._boardCol(viewCol);
+
+            // Same square = just a click-select (already done in pointerdown)
+            if (boardRow === drag.boardRow && boardCol === drag.boardCol) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            // Try the move
+            this.selectedTile = { row: drag.boardRow, col: drag.boardCol };
+            const moveResult = this.chess.makeMove(drag.boardRow, drag.boardCol, boardRow, boardCol);
+            if (moveResult) {
+                this.lastMove = moveResult;
+                this.selectedTile = null;
+                this.clearMoveIndicators();
+                this.clearHighlights();
+                this.drawPieces();
+                this.highlightLastMove();
+                this.updateStatus(moveResult);
+                if (!this.chess.gameOver) {
+                    this.engineMove();
+                }
+            } else {
+                // Invalid move – snap back
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+            }
         });
     }
 

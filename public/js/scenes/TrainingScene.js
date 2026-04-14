@@ -115,6 +115,7 @@ class TrainingScene extends Phaser.Scene {
     drawPieces() {
         this.pieceSprites.forEach(s => s.destroy());
         this.pieceSprites = [];
+        this._pieceSpriteMap = {};
         for (let boardRow = 0; boardRow < BOARD_SIZE; boardRow++) {
             for (let boardCol = 0; boardCol < BOARD_SIZE; boardCol++) {
                 const piece = this.chess.getPiece(boardRow, boardCol);
@@ -125,7 +126,10 @@ class TrainingScene extends Phaser.Scene {
                     const y = BOARD_OFFSET_Y + vr * TILE_SIZE + TILE_SIZE / 2;
                     const key = `${piece.color}_${piece.type}`;
                     const sprite = this.add.image(x, y, key);
+                    sprite._boardRow = boardRow;
+                    sprite._boardCol = boardCol;
                     this.pieceSprites.push(sprite);
+                    this._pieceSpriteMap[`${boardRow}_${boardCol}`] = sprite;
                 }
             }
         }
@@ -420,17 +424,112 @@ class TrainingScene extends Phaser.Scene {
         document.getElementById('puzzle-progress').textContent = '';
     }
 
-    // ---- Eingabe ----
+    // ---- Eingabe (Click + Drag & Drop) ----
     _setupInput() {
+        this._dragging = null;
+
         this.input.on('pointerdown', (pointer) => {
-            // View-Koordinaten
             const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
             const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
             if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) return;
-            // In Board-Koordinaten umrechnen
             const boardRow = this._boardRow(viewRow);
             const boardCol = this._boardCol(viewCol);
+
+            const piece = this.chess.getPiece(boardRow, boardCol);
+            if (piece && piece.color === this.playerColor && !this.puzzleSolved && !this.loading &&
+                this.chess.currentTurn === this.playerColor) {
+                // Check storm/streak ended
+                if (this.gameMode === 'storm' && !this.stormActive) return;
+                if (this.gameMode === 'streak' && this.streakFailed) return;
+
+                const sprite = this._pieceSpriteMap && this._pieceSpriteMap[`${boardRow}_${boardCol}`];
+                if (sprite) {
+                    this._dragging = {
+                        sprite, boardRow, boardCol,
+                        origX: sprite.x, origY: sprite.y
+                    };
+                    sprite.setDepth(100);
+                    this._selectTile(boardRow, boardCol);
+                    return;
+                }
+            }
+
             this._handleClick(boardRow, boardCol);
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (!this._dragging) return;
+            this._dragging.sprite.x = pointer.x;
+            this._dragging.sprite.y = pointer.y;
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            if (!this._dragging) return;
+            const drag = this._dragging;
+            this._dragging = null;
+            drag.sprite.setDepth(0);
+
+            const viewCol = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
+            const viewRow = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
+
+            if (viewRow < 0 || viewRow > 7 || viewCol < 0 || viewCol > 7) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            const boardRow = this._boardRow(viewRow);
+            const boardCol = this._boardCol(viewCol);
+
+            if (boardRow === drag.boardRow && boardCol === drag.boardCol) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            // Validate against solution
+            const expectedUci = this.solutionMoves[this.solutionIndex];
+            const playerUci = this._toUci(drag.boardRow, drag.boardCol, boardRow, boardCol);
+
+            if (playerUci === expectedUci || playerUci === expectedUci.substring(0, 4)) {
+                const result = this.chess.makeUciMove(expectedUci);
+                if (result) {
+                    this.solutionIndex++;
+                    this.clearHighlights();
+                    this.clearMoveIndicators();
+                    this._setBoardOverlay(drag.boardRow, drag.boardCol, 0x66cc66, 0.4);
+                    this._setBoardOverlay(boardRow, boardCol, 0x66cc66, 0.4);
+                    this.drawPieces();
+                    this.selectedTile = null;
+
+                    if (this.solutionIndex >= this.solutionMoves.length) {
+                        this._onPuzzleSolved();
+                        return;
+                    }
+                    this.time.delayedCall(500, () => this._playOpponentResponse());
+                }
+            } else {
+                // Wrong move
+                const vr = this._viewRow(boardRow);
+                const vc = this._viewCol(boardCol);
+                this._setViewOverlay(vr, vc, COLORS.CHECK, 0.5);
+                this.time.delayedCall(500, () => this.clearHighlights());
+                this.selectedTile = null;
+                this.clearMoveIndicators();
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+
+                if (this.gameMode === 'storm') {
+                    this.stormTimeLeft = Math.max(0, this.stormTimeLeft - 10);
+                    document.getElementById('status').textContent = '✗ Falsch! -10 Sekunden';
+                    this._updateHUD();
+                    if (this.stormTimeLeft <= 0) this._endStorm();
+                } else if (this.gameMode === 'streak') {
+                    this._endStreak();
+                } else {
+                    document.getElementById('status').textContent = 'Falscher Zug! Versuche es erneut.';
+                }
+            }
         });
     }
 

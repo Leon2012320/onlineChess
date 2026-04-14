@@ -65,6 +65,7 @@ class ExerciseScene extends Phaser.Scene {
     drawPieces() {
         this.pieceSprites.forEach(s => s.destroy());
         this.pieceSprites = [];
+        this._pieceSpriteMap = {};
         for (let row = 0; row < BOARD_SIZE; row++) {
             for (let col = 0; col < BOARD_SIZE; col++) {
                 const piece = this.chess.getPiece(row, col);
@@ -73,7 +74,10 @@ class ExerciseScene extends Phaser.Scene {
                     const y = BOARD_OFFSET_Y + row * TILE_SIZE + TILE_SIZE / 2;
                     const key = `${piece.color}_${piece.type}`;
                     const sprite = this.add.image(x, y, key);
+                    sprite._boardRow = row;
+                    sprite._boardCol = col;
                     this.pieceSprites.push(sprite);
+                    this._pieceSpriteMap[`${row}_${col}`] = sprite;
                 }
             }
         }
@@ -117,13 +121,85 @@ class ExerciseScene extends Phaser.Scene {
         if (progressEl) progressEl.textContent = `Züge: ${this.moveCount}`;
     }
 
-    // ---- Eingabe ----
+    // ---- Eingabe (Click + Drag & Drop) ----
     _setupInput() {
+        this._dragging = null;
+
         this.input.on('pointerdown', (pointer) => {
             const col = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
             const row = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
             if (row < 0 || row > 7 || col < 0 || col > 7) return;
+
+            const piece = this.chess.getPiece(row, col);
+            if (piece && piece.color === this.playerColor && !this.exerciseDone && this.chess.currentTurn === this.playerColor) {
+                const sprite = this._pieceSpriteMap && this._pieceSpriteMap[`${row}_${col}`];
+                if (sprite) {
+                    this._dragging = {
+                        sprite, boardRow: row, boardCol: col,
+                        origX: sprite.x, origY: sprite.y
+                    };
+                    sprite.setDepth(100);
+                    this._selectTile(row, col);
+                    return;
+                }
+            }
+
             this._handleClick(row, col);
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (!this._dragging) return;
+            this._dragging.sprite.x = pointer.x;
+            this._dragging.sprite.y = pointer.y;
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            if (!this._dragging) return;
+            const drag = this._dragging;
+            this._dragging = null;
+            drag.sprite.setDepth(0);
+
+            const col = Math.floor((pointer.x - BOARD_OFFSET_X) / TILE_SIZE);
+            const row = Math.floor((pointer.y - BOARD_OFFSET_Y) / TILE_SIZE);
+
+            if (row < 0 || row > 7 || col < 0 || col > 7) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            if (row === drag.boardRow && col === drag.boardCol) {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+                return;
+            }
+
+            this.selectedTile = { row: drag.boardRow, col: drag.boardCol };
+            const moveResult = this.chess.makeMove(drag.boardRow, drag.boardCol, row, col);
+            if (moveResult) {
+                this.moveCount++;
+                this.clearHighlights();
+                this.clearMoveIndicators();
+                this._setTileOverlay(drag.boardRow, drag.boardCol, COLORS.LAST_MOVE, 0.35);
+                this._setTileOverlay(row, col, COLORS.LAST_MOVE, 0.35);
+                this.drawPieces();
+                this.selectedTile = null;
+
+                if (moveResult.checkmate) {
+                    this.exerciseDone = true;
+                    this._updateUI();
+                    return;
+                }
+                if (moveResult.stalemate) {
+                    document.getElementById('status').textContent = 'Patt! Versuche es erneut.';
+                    this.time.delayedCall(2000, () => this._loadExercise());
+                    return;
+                }
+                this.time.delayedCall(400, () => this._opponentDrawMove());
+            } else {
+                drag.sprite.x = drag.origX;
+                drag.sprite.y = drag.origY;
+            }
         });
     }
 
