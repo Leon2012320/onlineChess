@@ -27,27 +27,25 @@
     firebase.auth().onAuthStateChanged(function (user) {
         if (!user) return;
 
-        const uid = user.uid;
-        const userRef = db.ref('presence/' + uid);
+        // Eindeutige Session-ID pro Tab (nicht UID, da gleich pro Browser)
+        const sessionId = user.uid + '_' + Math.random().toString(36).substring(2, 10);
+        const sessionRef = db.ref('presence/' + sessionId);
         const connRef = db.ref('.info/connected');
 
         connRef.on('value', function (snap) {
             if (snap.val() === true) {
-                // Verbunden: aufräumen wenn Tab geschlossen
-                userRef.onDisconnect().remove();
-                // Präsenz setzen
-                userRef.set(true);
+                sessionRef.onDisconnect().remove();
+                sessionRef.set(true);
             }
         });
 
         // Online-Zähler lauschen
         db.ref('presence').on('value', function (snap) {
             const count = snap.numChildren();
-            const el = document.getElementById('online-count');
+            var el = document.getElementById('online-count');
             if (el) el.textContent = count;
         }, function (err) {
             console.warn('Presence read error:', err.message);
-            // Fallback: mindestens sich selbst zählen
             var el = document.getElementById('online-count');
             if (el) el.textContent = '1';
         });
