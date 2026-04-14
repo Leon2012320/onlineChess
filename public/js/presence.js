@@ -20,28 +20,36 @@
     const db = firebase.database();
 
     // Anonyme Auth für Presence
-    firebase.auth().signInAnonymously().catch(() => {});
+    firebase.auth().signInAnonymously().catch(function (err) {
+        console.warn('Firebase Auth fehlgeschlagen:', err.message);
+    });
 
-    firebase.auth().onAuthStateChanged((user) => {
+    firebase.auth().onAuthStateChanged(function (user) {
         if (!user) return;
 
         const uid = user.uid;
         const userRef = db.ref('presence/' + uid);
-        const countRef = db.ref('onlineCount');
+        const connRef = db.ref('.info/connected');
 
-        // onDisconnect: aufräumen wenn Tab geschlossen
-        userRef.onDisconnect().remove();
-
-        // Präsenz setzen
-        userRef.set(true);
+        connRef.on('value', function (snap) {
+            if (snap.val() === true) {
+                // Verbunden: aufräumen wenn Tab geschlossen
+                userRef.onDisconnect().remove();
+                // Präsenz setzen
+                userRef.set(true);
+            }
+        });
 
         // Online-Zähler lauschen
-        db.ref('presence').on('value', (snap) => {
+        db.ref('presence').on('value', function (snap) {
             const count = snap.numChildren();
             const el = document.getElementById('online-count');
-            if (el) {
-                el.textContent = count;
-            }
+            if (el) el.textContent = count;
+        }, function (err) {
+            console.warn('Presence read error:', err.message);
+            // Fallback: mindestens sich selbst zählen
+            var el = document.getElementById('online-count');
+            if (el) el.textContent = '1';
         });
     });
 })();
