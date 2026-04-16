@@ -168,8 +168,10 @@ class TrainingScene extends Phaser.Scene {
         }
 
         if (this.gameMode === 'streak') {
-            // Sort by rating ascending for progressive difficulty
+            // Sort by rating ascending — Puzzles werden in _fetchPuzzle
+            // progressiv nach Rating ausgewählt (±100 Bereich)
             all.sort((a, b) => a.rating - b.rating);
+            this._streakCurrentRating = all.length > 0 ? all[0].rating : 600;
         } else {
             // Shuffle for Storm
             for (let i = all.length - 1; i > 0; i--) {
@@ -193,8 +195,27 @@ class TrainingScene extends Phaser.Scene {
                 this.loading = false;
                 return;
             }
-            puzzle = this.puzzleList[this.puzzleIndex % this.puzzleList.length];
-            this.puzzleIndex++;
+
+            if (this.gameMode === 'streak') {
+                // Streak: Zufälliges Puzzle aus Bereich currentRating bis +100
+                const minR = this._streakCurrentRating;
+                const maxR = minR + 100;
+                const candidates = this.puzzleList.filter(p => p.rating >= minR && p.rating < maxR);
+                if (candidates.length > 0) {
+                    puzzle = candidates[Math.floor(Math.random() * candidates.length)];
+                } else {
+                    // Keine Puzzles im Bereich — nächst höheres nehmen
+                    const higher = this.puzzleList.filter(p => p.rating >= minR);
+                    puzzle = higher.length > 0
+                        ? higher[Math.floor(Math.random() * Math.min(5, higher.length))]
+                        : this.puzzleList[Math.floor(Math.random() * this.puzzleList.length)];
+                }
+                // Nach jedem gelösten Puzzle Rating um 100 erhöhen
+                this.puzzleIndex++;
+            } else {
+                puzzle = this.puzzleList[this.puzzleIndex % this.puzzleList.length];
+                this.puzzleIndex++;
+            }
         } else {
             // Normal mode
             const puzzles = this._getFilteredPuzzles();
@@ -555,7 +576,7 @@ class TrainingScene extends Phaser.Scene {
         });
     }
 
-    // Prüft ob ein Spielerzug alternativ korrekt ist (z.B. anderes Matt bei mateIn1)
+    // Prüft ob ein Spielerzug alternativ korrekt ist (z.B. anderes Matt)
     _isAlternativeWinningMove(fromRow, fromCol, toRow, toCol) {
         // Zug muss legal sein
         const legalMoves = this.chess.getLegalMoves(fromRow, fromCol);
@@ -568,16 +589,67 @@ class TrainingScene extends Phaser.Scene {
             return false;
         }
 
-        // Am letzten Spielerzug: Matt = richtig
-        const isLastPlayerMove = (this.solutionIndex === this.solutionMoves.length - 1) ||
-                                  (this.solutionIndex === this.solutionMoves.length - 2 && this.solutionMoves.length % 2 === 1);
+        // Direktes Matt ist immer korrekt
         if (result.checkmate) {
             this.chess.loadState(state);
             return true;
         }
 
+        // Bei Mehrzug-Puzzles: Prüfe ob nach dem Spielerzug
+        // der Gegner in allen Antworten in weniger Zügen matt gesetzt werden kann
+        const remainingMoves = this.solutionMoves.length - this.solutionIndex;
+        if (remainingMoves <= 3) {
+            // Prüfe ob Matt in den restlichen Zügen erzwungen wird
+            const forced = this._isForcedMate(Math.ceil(remainingMoves / 2));
+            this.chess.loadState(state);
+            return forced;
+        }
+
         this.chess.loadState(state);
         return false;
+    }
+
+    // Einfache Prüfung ob Matt in N Zügen erzwungen ist
+    _isForcedMate(depth) {
+        if (depth <= 0) return false;
+        const color = this.chess.currentTurn;
+        const opponent = color === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
+
+        // Gegner am Zug: Alle Züge probieren, Matt muss in ALLEN erzwungen sein
+        let hasLegalMove = false;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = this.chess.getPiece(r, c);
+                if (!p || p.color !== color) continue;
+                const moves = this.chess.getLegalMoves(r, c);
+                for (const m of moves) {
+                    hasLegalMove = true;
+                    const st = this.chess.getState();
+                    const res = this.chess.makeMove(r, c, m.row, m.col);
+                    if (!res) { this.chess.loadState(st); continue; }
+
+                    if (color === this.playerColor) {
+                        // Spieler: Mindestens EIN Zug muss Matt erzwingen
+                        if (res.checkmate) { this.chess.loadState(st); return true; }
+                        const canForce = this._isForcedMate(depth);
+                        this.chess.loadState(st);
+                        if (canForce) return true;
+                    } else {
+                        // Gegner: ALLE Züge müssen zu erzwungenem Matt führen
+                        if (res.checkmate) {
+                            // Gegner wurde mattgesetzt — das passiert nicht, Gegner zieht
+                            this.chess.loadState(st);
+                            return false;
+                        }
+                        const canForce = this._isForcedMate(depth - 1);
+                        this.chess.loadState(st);
+                        if (!canForce) return false;
+                    }
+                }
+            }
+        }
+        if (!hasLegalMove) return false;
+        return color !== this.playerColor; // Wenn Gegner keine Züge hat und alle geprüft
     }
 
     _handleClick(row, col) {
@@ -723,6 +795,8 @@ class TrainingScene extends Phaser.Scene {
 
         if (this.gameMode === 'streak') {
             this.streakScore++;
+            // Rating um 100 erhöhen für nächstes Puzzle
+            this._streakCurrentRating = (this._streakCurrentRating || 600) + 100;
             this._updateHUD();
             this._updateUI();
             // Schnell weiter (400ms)
