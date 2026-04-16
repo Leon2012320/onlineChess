@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://leon2012320.github.io/onlineChess/sitemap.xml
