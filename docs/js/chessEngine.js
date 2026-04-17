@@ -323,6 +323,10 @@ class ChessEngine {
             const promoA = this._isPromotion(a) ? 900 : 0;
             const promoB = this._isPromotion(b) ? 900 : 0;
 
+            // Rochade hoch priorisieren
+            const castleA = this._isCastling(a) ? 150 : 0;
+            const castleB = this._isCastling(b) ? 150 : 0;
+
             // MVV-LVA: Wertvolles Opfer schlagen mit wenig wertvollem Angreifer
             const capturedA = this.chess.getPiece(a.toRow, a.toCol);
             const capturedB = this.chess.getPiece(b.toRow, b.toCol);
@@ -339,7 +343,7 @@ class ChessEngine {
             const centerA = (a.toRow >= 3 && a.toRow <= 4 && a.toCol >= 3 && a.toCol <= 4) ? 5 : 0;
             const centerB = (b.toRow >= 3 && b.toRow <= 4 && b.toCol >= 3 && b.toCol <= 4) ? 5 : 0;
 
-            return (promoB + mvvlvaB + centerB) - (promoA + mvvlvaA + centerA);
+            return (promoB + mvvlvaB + castleB + centerB) - (promoA + mvvlvaA + castleA + centerA);
         });
     }
 
@@ -348,6 +352,11 @@ class ChessEngine {
         if (!piece || piece.type !== PIECE.PAWN) return false;
         return (piece.color === COLOR.WHITE && move.toRow === 0) ||
                (piece.color === COLOR.BLACK && move.toRow === 7);
+    }
+
+    _isCastling(move) {
+        const piece = this.chess.getPiece(move.fromRow, move.fromCol);
+        return piece && piece.type === PIECE.KING && Math.abs(move.toCol - move.fromCol) === 2;
     }
 
     // --- Quiescence Search (Ruhesuche) ---
@@ -381,7 +390,8 @@ class ChessEngine {
             if (!isMaximizing && standPat - capturedVal - 200 > beta) continue;
 
             const state = this.chess.getState();
-            this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+            const qResult = this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+            if (!qResult) { this.chess.loadState(state); this.chess.currentTurn = color; continue; }
             const evalScore = this.quiescence(alpha, beta, !isMaximizing, qDepth - 1);
             this.chess.loadState(state);
             this.chess.currentTurn = color;
@@ -428,7 +438,8 @@ class ChessEngine {
             let maxEval = -Infinity;
             for (const move of moves) {
                 const state = this.chess.getState();
-                this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+                const result = this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+                if (!result) { this.chess.loadState(state); this.chess.currentTurn = color; continue; }
                 const evalScore = this.minimax(depth - 1, alpha, beta, false);
                 this.chess.loadState(state);
                 this.chess.currentTurn = color;
@@ -441,7 +452,8 @@ class ChessEngine {
             let minEval = Infinity;
             for (const move of moves) {
                 const state = this.chess.getState();
-                this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+                const result = this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+                if (!result) { this.chess.loadState(state); this.chess.currentTurn = color; continue; }
                 const evalScore = this.minimax(depth - 1, alpha, beta, true);
                 this.chess.loadState(state);
                 this.chess.currentTurn = color;
@@ -471,7 +483,8 @@ class ChessEngine {
 
         for (const move of moves) {
             const state = this.chess.getState();
-            this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+            const result = this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+            if (!result) { this.chess.loadState(state); this.chess.currentTurn = color; continue; }
             const evalScore = this.minimax(this.maxDepth - 1, -Infinity, Infinity, !isMaximizing);
             this.chess.loadState(state);
             this.chess.currentTurn = color;
@@ -508,7 +521,8 @@ class ChessEngine {
 
         for (const move of moves) {
             const state = this.chess.getState();
-            this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+            const result = this.chess.makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
+            if (!result) { this.chess.loadState(state); this.chess.currentTurn = color; continue; }
 
             const opponentColor = color === COLOR.WHITE ? COLOR.BLACK : COLOR.WHITE;
             if (this.chess.isStalemate(opponentColor)) {
